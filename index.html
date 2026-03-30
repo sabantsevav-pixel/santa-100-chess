@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Grand Musketeer Chess</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<!-- ======== LOBBY SCREEN ======== -->
+<div id="lobby">
+    <h1>♔ Grand Musketeer Chess ♚</h1>
+    <p class="subtitle">A 10×10 chess variant with Musketeers</p>
+
+    <div class="lobby-section">
+        <button id="btn-create" onclick="createGame()">Create Game</button>
+        <button id="btn-local" onclick="startLocalGame()">Play Local (Same Device)</button>
+    </div>
+
+    <div class="lobby-section">
+        <div class="divider">— or join a game —</div>
+        <div class="join-row">
+            <input type="text" id="join-code" placeholder="Enter Room Code" maxlength="6" />
+            <button id="btn-join" onclick="joinGame()">Join Game</button>
+        </div>
+    </div>
+
+    <div id="lobby-status"></div>
+
+    <!-- Waiting area (shown after creating a game) -->
+    <div id="waiting-area" class="hidden">
+        <div class="room-code-display">
+            <p>Share this code with your opponent:</p>
+            <div id="room-code-big"></div>
+            <button onclick="copyRoomCode()">📋 Copy Code</button>
+        </div>
+        <div class="waiting-spinner">Waiting for opponent...</div>
+        <button class="cancel-btn" onclick="cancelGame()">Cancel</button>
+    </div>
+</div>
+
+<!-- ======== GAME SCREEN ======== -->
+<div id="game-screen" class="hidden">
+    <h1>♔ Grand Musketeer Chess ♚</h1>
+
+    <div id="game-info-bar">
+        <span id="turn-indicator">White's turn</span>
+        <span id="player-color-label"></span>
+        <span id="room-code-small"></span>
+        <span id="connection-status">●</span>
+    </div>
+
+    <div id="board-container">
+        <div id="rank-labels"></div>
+        <div id="board"></div>
+    </div>
+    <div id="file-labels"></div>
+
+    <div id="move-history-container">
+        <h3>Move History</h3>
+        <div id="move-history"></div>
+    </div>
+
+    <div id="controls">
+        <button onclick="undoMove()">Undo Move</button>
+        <button onclick="offerDraw()">Offer Draw</button>
+        <button onclick="resignGame()">Resign</button>
+        <button onclick="backToLobby()">Leave Game</button>
+    </div>
+</div>
+
+<!-- ======== PROMOTION MODAL ======== -->
+<div id="promotion-modal">
+    <div id="promotion-choices">
+        <h3>Choose promotion piece:</h3>
+        <div id="promo-buttons"></div>
+    </div>
+</div>
+
+<!-- ======== GAME OVER MODAL ======== -->
+<div id="game-over-modal">
+    <div id="game-over-content">
+        <h2 id="game-over-text"></h2>
+        <button onclick="backToLobby()">Back to Lobby</button>
+    </div>
+</div>
+
+<!-- ======== DRAW OFFER MODAL ======== -->
+<div id="draw-modal">
+    <div id="draw-content">
+        <h2>Opponent offers a draw</h2>
+        <div class="modal-buttons">
+            <button onclick="respondDraw(true)">Accept Draw</button>
+            <button onclick="respondDraw(false)">Decline</button>
+        </div>
+    </div>
+</div>
+
+<!-- Firebase SDK (CDN / compat version for simplicity) -->
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
+
+<script src="game.js"></script>
+</body>
+</html>
