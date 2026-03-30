@@ -1,31 +1,44 @@
+/* ============================================================
+   RESET & BASE
+   ============================================================ */
+
 * {
     margin: 0;
     padding: 0;
     box-sizing: border-box;
 }
 
+html {
+    overflow-x: hidden;
+}
+
 body {
     display: flex;
     flex-direction: column;
     align-items: center;
-    justify-content: center;
     min-height: 100vh;
     background: #1a1a2e;
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
     color: #e0e0e0;
+    padding: 10px;
+    overflow-x: hidden;
 }
 
 .hidden { display: none !important; }
 
-/* ======== LOBBY ======== */
+/* ============================================================
+   LOBBY
+   ============================================================ */
 
 #lobby {
     text-align: center;
-    padding: 40px;
+    padding: 20px;
+    width: 100%;
+    max-width: 500px;
 }
 
 #lobby h1 {
-    font-size: 2.4rem;
+    font-size: 2rem;
     color: #e0c068;
     text-shadow: 1px 1px 3px rgba(0,0,0,0.5);
     margin-bottom: 5px;
@@ -33,17 +46,26 @@ body {
 
 .subtitle {
     color: #aaa;
-    margin-bottom: 30px;
-    font-size: 1.1rem;
+    margin-bottom: 25px;
+    font-size: 1rem;
 }
 
 .lobby-section {
-    margin-bottom: 25px;
+    margin-bottom: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    align-items: center;
+}
+
+.lobby-section button {
+    width: 100%;
+    max-width: 280px;
 }
 
 .divider {
     color: #666;
-    margin: 15px 0;
+    margin: 10px 0;
     font-size: 0.9rem;
 }
 
@@ -52,6 +74,7 @@ body {
     gap: 10px;
     justify-content: center;
     align-items: center;
+    flex-wrap: wrap;
 }
 
 #join-code {
@@ -60,7 +83,7 @@ body {
     text-align: center;
     text-transform: uppercase;
     letter-spacing: 3px;
-    width: 180px;
+    width: 170px;
     border: 2px solid #e0c068;
     border-radius: 8px;
     background: #16213e;
@@ -71,41 +94,45 @@ body {
 #join-code::placeholder {
     color: #555;
     letter-spacing: 1px;
-    font-size: 0.9rem;
+    font-size: 0.85rem;
 }
 
 #lobby-status {
-    margin-top: 15px;
+    margin-top: 12px;
     color: #e87272;
     min-height: 24px;
+    font-size: 0.95rem;
 }
 
 /* Waiting area */
 #waiting-area {
-    margin-top: 20px;
-    padding: 25px;
+    margin-top: 15px;
+    padding: 20px;
     background: #16213e;
     border: 1px solid #e0c068;
     border-radius: 12px;
+    width: 100%;
+    max-width: 400px;
 }
 
 .room-code-display p {
     color: #aaa;
-    margin-bottom: 10px;
+    margin-bottom: 8px;
+    font-size: 0.95rem;
 }
 
 #room-code-big {
-    font-size: 3rem;
+    font-size: 2.5rem;
     font-family: 'Courier New', monospace;
     color: #e0c068;
-    letter-spacing: 8px;
-    margin-bottom: 15px;
+    letter-spacing: 6px;
+    margin-bottom: 12px;
     font-weight: bold;
 }
 
 .waiting-spinner {
     color: #aaa;
-    margin: 15px 0;
+    margin: 12px 0;
     animation: pulse 1.5s infinite;
 }
 
@@ -115,7 +142,7 @@ body {
 }
 
 .cancel-btn {
-    margin-top: 10px;
+    margin-top: 8px;
     background: transparent;
     border: 1px solid #e87272;
     color: #e87272;
@@ -129,32 +156,37 @@ body {
     color: #fff;
 }
 
-/* ======== GAME SCREEN ======== */
+/* ============================================================
+   GAME SCREEN
+   ============================================================ */
 
 #game-screen {
     display: flex;
     flex-direction: column;
     align-items: center;
+    width: 100%;
 }
 
-#game-screen h1 {
-    font-size: 1.8rem;
+.game-title {
+    font-size: 1.6rem;
     color: #e0c068;
     margin-bottom: 5px;
+    text-align: center;
 }
 
 #game-info-bar {
     display: flex;
-    gap: 15px;
+    gap: 8px;
     align-items: center;
-    margin-bottom: 12px;
-    padding: 8px 20px;
+    margin-bottom: 8px;
+    padding: 6px 12px;
     background: #16213e;
     border: 1px solid #e0c068;
     border-radius: 8px;
-    font-size: 1rem;
+    font-size: 0.85rem;
     flex-wrap: wrap;
     justify-content: center;
+    max-width: 100%;
 }
 
 #turn-indicator {
@@ -172,13 +204,21 @@ body {
 }
 
 #connection-status {
-    font-size: 1.2rem;
+    font-size: 1rem;
 }
 
 #connection-status.connected { color: #4caf50; }
 #connection-status.disconnected { color: #e87272; }
 
-/* ======== BOARD ======== */
+/* ============================================================
+   BOARD — Desktop default (60px squares)
+   ============================================================ */
+
+#board-wrapper {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
 
 #board-container {
     display: flex;
@@ -188,37 +228,44 @@ body {
 
 #rank-labels {
     display: grid;
-    grid-template-rows: repeat(10, 60px);
+    grid-template-rows: repeat(10, var(--sq));
     align-items: center;
     justify-items: center;
-    margin-right: 5px;
-    font-size: 0.9rem;
+    margin-right: 3px;
+    font-size: var(--label-size);
     color: #aaa;
     font-weight: bold;
+    width: 20px;
 }
 
 #file-labels {
     display: grid;
-    grid-template-columns: repeat(10, 60px);
+    grid-template-columns: repeat(10, var(--sq));
     justify-items: center;
-    margin-top: 5px;
-    margin-left: 25px;
-    font-size: 0.9rem;
+    margin-top: 3px;
+    margin-left: 23px;
+    font-size: var(--label-size);
     color: #aaa;
     font-weight: bold;
 }
 
+:root {
+    --sq: 60px;
+    --piece-size: 50px;
+    --label-size: 0.85rem;
+}
+
 #board {
     display: grid;
-    grid-template-columns: repeat(10, 60px);
-    grid-template-rows: repeat(10, 60px);
+    grid-template-columns: repeat(10, var(--sq));
+    grid-template-rows: repeat(10, var(--sq));
     border: 3px solid #e0c068;
-    box-shadow: 0 0 20px rgba(224, 192, 104, 0.3);
+    box-shadow: 0 0 15px rgba(224, 192, 104, 0.3);
 }
 
 .square {
-    width: 60px;
-    height: 60px;
+    width: var(--sq);
+    height: var(--sq);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -226,78 +273,96 @@ body {
     user-select: none;
     position: relative;
     transition: background-color 0.15s;
+    -webkit-tap-highlight-color: transparent;
 }
 
 .square.light { background-color: #f0d9b5; }
 .square.dark { background-color: #b58863; }
+
 .square.selected {
     background-color: #7fc97f !important;
-    box-shadow: inset 0 0 10px rgba(0, 100, 0, 0.5);
+    box-shadow: inset 0 0 8px rgba(0, 100, 0, 0.5);
 }
+
 .square.valid-move::after {
     content: '';
     position: absolute;
-    width: 18px;
-    height: 18px;
+    width: 30%;
+    height: 30%;
     background: rgba(0, 0, 0, 0.25);
     border-radius: 50%;
 }
+
 .square.valid-capture { background-color: #e87272 !important; }
 .square.last-move-from { background-color: #cdd26a !important; }
 .square.last-move-to { background-color: #aab834 !important; }
-.square:hover { filter: brightness(1.1); }
+
+/* Remove hover effect on touch devices */
+@media (hover: hover) {
+    .square:hover { filter: brightness(1.1); }
+}
 
 .piece-img {
-    width: 50px;
-    height: 50px;
+    width: var(--piece-size);
+    height: var(--piece-size);
     pointer-events: none;
     filter: drop-shadow(1px 1px 1px rgba(0,0,0,0.3));
 }
 
-/* ======== MOVE HISTORY ======== */
+/* ============================================================
+   MOVE HISTORY
+   ============================================================ */
 
 #move-history-container {
-    margin-top: 20px;
-    width: 640px;
-    max-height: 150px;
+    margin-top: 12px;
+    width: 100%;
+    max-width: 640px;
+    max-height: 120px;
     overflow-y: auto;
     background: #16213e;
     border: 1px solid #e0c068;
     border-radius: 8px;
-    padding: 10px 15px;
+    padding: 8px 12px;
 }
 
 #move-history-container h3 {
     color: #e0c068;
-    margin-bottom: 5px;
+    margin-bottom: 4px;
+    font-size: 0.9rem;
 }
 
 #move-history {
     font-family: 'Courier New', monospace;
-    font-size: 0.9rem;
+    font-size: 0.8rem;
     color: #ccc;
-    line-height: 1.6;
+    line-height: 1.5;
+    word-wrap: break-word;
 }
 
-/* ======== CONTROLS ======== */
+/* ============================================================
+   CONTROLS
+   ============================================================ */
 
 #controls {
-    margin-top: 15px;
+    margin-top: 10px;
     display: flex;
-    gap: 10px;
+    gap: 6px;
     flex-wrap: wrap;
     justify-content: center;
+    width: 100%;
+    max-width: 640px;
 }
 
 button {
-    padding: 10px 25px;
-    font-size: 1rem;
+    padding: 8px 14px;
+    font-size: 0.85rem;
     border: 1px solid #e0c068;
     background: #16213e;
     color: #e0c068;
     border-radius: 8px;
     cursor: pointer;
     transition: all 0.2s;
+    -webkit-tap-highlight-color: transparent;
 }
 
 button:hover {
@@ -305,7 +370,13 @@ button:hover {
     color: #1a1a2e;
 }
 
-/* ======== MODALS ======== */
+button:active {
+    transform: scale(0.95);
+}
+
+/* ============================================================
+   MODALS
+   ============================================================ */
 
 #promotion-modal, #game-over-modal, #draw-modal {
     display: none;
@@ -316,6 +387,7 @@ button:hover {
     z-index: 100;
     align-items: center;
     justify-content: center;
+    padding: 20px;
 }
 
 #promotion-modal.active, #game-over-modal.active, #draw-modal.active {
@@ -326,25 +398,37 @@ button:hover {
     background: #16213e;
     border: 2px solid #e0c068;
     border-radius: 12px;
-    padding: 25px;
+    padding: 20px;
     text-align: center;
+    max-width: 90vw;
 }
 
 #promotion-choices h3, #game-over-content h2, #draw-content h2 {
     color: #e0c068;
-    margin-bottom: 15px;
+    margin-bottom: 12px;
 }
 
-#game-over-content h2 { font-size: 1.8rem; }
+#promotion-choices h3 {
+    font-size: 1rem;
+}
+
+#game-over-content h2 {
+    font-size: 1.4rem;
+}
+
+#draw-content h2 {
+    font-size: 1.2rem;
+}
 
 .promo-option {
     display: inline-block;
     cursor: pointer;
-    padding: 8px;
-    margin: 0 5px;
+    padding: 6px;
+    margin: 0 3px;
     border-radius: 8px;
     border: 2px solid transparent;
     transition: all 0.2s;
+    -webkit-tap-highlight-color: transparent;
 }
 
 .promo-option:hover {
@@ -353,13 +437,354 @@ button:hover {
 }
 
 .promo-option .piece-img {
-    width: 50px;
-    height: 50px;
+    width: var(--piece-size);
+    height: var(--piece-size);
 }
 
 .modal-buttons {
     display: flex;
     gap: 10px;
     justify-content: center;
-    margin-top: 15px;
+    margin-top: 12px;
+    flex-wrap: wrap;
+}
+
+/* ============================================================
+   RESPONSIVE: TABLETS (portrait, ~768px)
+   ============================================================ */
+
+@media screen and (max-width: 768px) {
+    :root {
+        --sq: 52px;
+        --piece-size: 44px;
+        --label-size: 0.75rem;
+    }
+
+    body {
+        padding: 8px;
+    }
+
+    .game-title {
+        font-size: 1.3rem;
+    }
+
+    #game-info-bar {
+        font-size: 0.8rem;
+        padding: 5px 10px;
+        gap: 6px;
+    }
+
+    #move-history-container {
+        max-height: 100px;
+    }
+
+    #controls button {
+        padding: 7px 12px;
+        font-size: 0.8rem;
+    }
+}
+
+/* ============================================================
+   RESPONSIVE: LARGE PHONES (landscape or wide, ~600px)
+   ============================================================ */
+
+@media screen and (max-width: 640px) {
+    :root {
+        --sq: 46px;
+        --piece-size: 38px;
+        --label-size: 0.7rem;
+    }
+
+    #lobby h1 {
+        font-size: 1.6rem;
+    }
+
+    .subtitle {
+        font-size: 0.9rem;
+    }
+
+    #room-code-big {
+        font-size: 2rem;
+        letter-spacing: 4px;
+    }
+
+    .game-title {
+        font-size: 1.1rem;
+    }
+
+    #controls {
+        gap: 5px;
+    }
+
+    #controls button {
+        padding: 6px 10px;
+        font-size: 0.75rem;
+    }
+}
+
+/* ============================================================
+   RESPONSIVE: PHONES (portrait, ~480px)
+   ============================================================ */
+
+@media screen and (max-width: 500px) {
+    :root {
+        --sq: 36px;
+        --piece-size: 30px;
+        --label-size: 0.6rem;
+    }
+
+    body {
+        padding: 5px;
+    }
+
+    #lobby h1 {
+        font-size: 1.4rem;
+    }
+
+    .subtitle {
+        font-size: 0.8rem;
+        margin-bottom: 15px;
+    }
+
+    #lobby {
+        padding: 10px;
+    }
+
+    .lobby-section button {
+        max-width: 240px;
+        font-size: 0.9rem;
+    }
+
+    #join-code {
+        width: 140px;
+        font-size: 1rem;
+        padding: 8px 10px;
+    }
+
+    #room-code-big {
+        font-size: 1.8rem;
+        letter-spacing: 4px;
+    }
+
+    #waiting-area {
+        padding: 15px;
+    }
+
+    .game-title {
+        font-size: 1rem;
+        margin-bottom: 3px;
+    }
+
+    #game-info-bar {
+        font-size: 0.7rem;
+        padding: 4px 8px;
+        gap: 4px;
+        margin-bottom: 5px;
+    }
+
+    #rank-labels {
+        width: 16px;
+        margin-right: 2px;
+    }
+
+    #file-labels {
+        margin-left: 18px;
+        margin-top: 2px;
+    }
+
+    #board {
+        border-width: 2px;
+    }
+
+    #move-history-container {
+        max-height: 80px;
+        padding: 6px 8px;
+        margin-top: 8px;
+    }
+
+    #move-history-container h3 {
+        font-size: 0.8rem;
+    }
+
+    #move-history {
+        font-size: 0.7rem;
+    }
+
+    #controls {
+        margin-top: 8px;
+        gap: 4px;
+    }
+
+    #controls button {
+        padding: 6px 8px;
+        font-size: 0.7rem;
+    }
+
+    #promotion-choices h3 {
+        font-size: 0.85rem;
+    }
+
+    #game-over-content h2 {
+        font-size: 1.1rem;
+    }
+
+    .promo-option {
+        padding: 4px;
+        margin: 0 2px;
+    }
+}
+
+/* ============================================================
+   RESPONSIVE: SMALL PHONES (~380px and below)
+   ============================================================ */
+
+@media screen and (max-width: 400px) {
+    :root {
+        --sq: 32px;
+        --piece-size: 26px;
+        --label-size: 0.55rem;
+    }
+
+    #lobby h1 {
+        font-size: 1.2rem;
+    }
+
+    .game-title {
+        font-size: 0.9rem;
+    }
+
+    #game-info-bar {
+        font-size: 0.65rem;
+    }
+
+    #controls button {
+        padding: 5px 6px;
+        font-size: 0.65rem;
+    }
+}
+
+/* ============================================================
+   RESPONSIVE: VERY SMALL PHONES (~340px)
+   ============================================================ */
+
+@media screen and (max-width: 360px) {
+    :root {
+        --sq: 28px;
+        --piece-size: 23px;
+        --label-size: 0.5rem;
+    }
+
+    #rank-labels {
+        width: 14px;
+        margin-right: 1px;
+    }
+
+    #file-labels {
+        margin-left: 15px;
+    }
+
+    .game-title {
+        font-size: 0.85rem;
+    }
+}
+
+/* ============================================================
+   LANDSCAPE MODE: Optimize layout when phone is sideways
+   ============================================================ */
+
+@media screen and (max-height: 500px) and (orientation: landscape) {
+    :root {
+        --sq: 38px;
+        --piece-size: 32px;
+        --label-size: 0.6rem;
+    }
+
+    body {
+        padding: 3px;
+    }
+
+    .game-title {
+        font-size: 0.9rem;
+        margin-bottom: 2px;
+    }
+
+    #game-info-bar {
+        margin-bottom: 3px;
+        padding: 3px 8px;
+        font-size: 0.7rem;
+    }
+
+    #move-history-container {
+        max-height: 50px;
+        margin-top: 5px;
+        padding: 4px 6px;
+    }
+
+    #move-history-container h3 {
+        font-size: 0.7rem;
+    }
+
+    #move-history {
+        font-size: 0.65rem;
+    }
+
+    #controls {
+        margin-top: 5px;
+    }
+
+    #controls button {
+        padding: 4px 6px;
+        font-size: 0.65rem;
+    }
+}
+
+@media screen and (max-height: 400px) and (orientation: landscape) {
+    :root {
+        --sq: 32px;
+        --piece-size: 27px;
+        --label-size: 0.5rem;
+    }
+
+    .game-title { display: none; }
+
+    #game-info-bar {
+        margin-bottom: 2px;
+        padding: 2px 6px;
+        font-size: 0.6rem;
+    }
+
+    #move-history-container { display: none; }
+}
+
+/* ============================================================
+   UTILITY: Prevent text selection on board during play
+   ============================================================ */
+
+#board-wrapper {
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
+    touch-action: manipulation;
+}
+
+/* Prevent double-tap zoom on the board */
+#board {
+    touch-action: manipulation;
+}
+
+.square {
+    touch-action: manipulation;
+}
+
+/* ============================================================
+   SAFE AREA (for phones with notches like iPhone X+)
+   ============================================================ */
+
+@supports (padding: env(safe-area-inset-bottom)) {
+    body {
+        padding-bottom: env(safe-area-inset-bottom);
+        padding-left: env(safe-area-inset-left);
+        padding-right: env(safe-area-inset-right);
+    }
 }
