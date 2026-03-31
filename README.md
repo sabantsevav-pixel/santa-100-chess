@@ -3,7 +3,7 @@
 A 10×10 chess variant featuring the Musketeer piece — playable online with real-time multiplayer!
 
 ## 🎮 Play Now
-**[https://YOUR-USERNAME.github.io/grand-musketeer-chess/](https://YOUR-USERNAME.github.io/grand-musketeer-chess/)**
+**[https://sabantsevav-pixel.github.io/santa-100-chess/](https://sabantsevav-pixel.github.io/santa-100-chess/)**
 
 ## 🆕 What's Different from Standard Chess?
 
