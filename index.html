@@ -2,19 +2,42 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-	<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Santa 100 Chess</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Santa Chess 100</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
 <!-- ======== LOBBY SCREEN ======== -->
 <div id="lobby">
-    <h1>♔ Santa 100 Chess ♚</h1>
+    <h1>♔ Santa Chess 100 ♚</h1>
     <p class="subtitle">A 10×10 chess variant with Musketeers</p>
 
     <div class="lobby-section">
-        <button id="btn-create" onclick="createGame()">Create Game</button>
+        <label class="timer-label" for="time-control">Time Control:</label>
+        <select id="time-control">
+            <option value="none">No Timer (Casual)</option>
+            <optgroup label="Bullet">
+                <option value="1+0">1+0 (1 min)</option>
+                <option value="1+1">1+1 (1 min + 1s)</option>
+                <option value="2+1">2+1 (2 min + 1s)</option>
+            </optgroup>
+            <optgroup label="Blitz">
+                <option value="3+0">3+0 (3 min)</option>
+                <option value="3+2">3+2 (3 min + 2s)</option>
+                <option value="5+0">5+0 (5 min)</option>
+                <option value="5+3">5+3 (5 min + 3s)</option>
+            </optgroup>
+            <optgroup label="Rapid">
+                <option value="10+0" selected>10+0 (10 min)</option>
+                <option value="10+5">10+5 (10 min + 5s)</option>
+                <option value="15+10">15+10 (15 min + 10s)</option>
+            </optgroup>
+        </select>
+    </div>
+
+    <div class="lobby-section">
+        <button id="btn-create" onclick="createGame()">Create Online Game</button>
         <button id="btn-local" onclick="startLocalGame()">Play Local (Same Device)</button>
     </div>
 
@@ -28,13 +51,13 @@
 
     <div id="lobby-status"></div>
 
-    <!-- Waiting area (shown after creating a game) -->
     <div id="waiting-area" class="hidden">
         <div class="room-code-display">
             <p>Share this code with your opponent:</p>
             <div id="room-code-big"></div>
             <button onclick="copyRoomCode()">📋 Copy Code</button>
         </div>
+        <div id="waiting-time-control"></div>
         <div class="waiting-spinner">Waiting for opponent...</div>
         <button class="cancel-btn" onclick="cancelGame()">Cancel</button>
     </div>
@@ -42,7 +65,7 @@
 
 <!-- ======== GAME SCREEN ======== -->
 <div id="game-screen" class="hidden">
-    <h1>♔ Grand Musketeer Chess ♚</h1>
+    <h1 class="game-title">♔ Grand Musketeer Chess ♚</h1>
 
     <div id="game-info-bar">
         <span id="turn-indicator">White's turn</span>
@@ -51,11 +74,25 @@
         <span id="connection-status">●</span>
     </div>
 
-    <div id="board-container">
-        <div id="rank-labels"></div>
-        <div id="board"></div>
+    <!-- Top clock (opponent in online, Black in local) -->
+    <div id="clock-top" class="chess-clock">
+        <span class="clock-player-label" id="clock-top-label">Black</span>
+        <span class="clock-time" id="clock-top-time">10:00</span>
     </div>
-    <div id="file-labels"></div>
+
+    <div id="board-wrapper">
+        <div id="board-container">
+            <div id="rank-labels"></div>
+            <div id="board"></div>
+        </div>
+        <div id="file-labels"></div>
+    </div>
+
+    <!-- Bottom clock (you in online, White in local) -->
+    <div id="clock-bottom" class="chess-clock">
+        <span class="clock-player-label" id="clock-bottom-label">White</span>
+        <span class="clock-time" id="clock-bottom-time">10:00</span>
+    </div>
 
     <div id="move-history-container">
         <h3>Move History</h3>
@@ -63,10 +100,11 @@
     </div>
 
     <div id="controls">
-        <button onclick="undoMove()">Undo Move</button>
-        <button onclick="offerDraw()">Offer Draw</button>
-        <button onclick="resignGame()">Resign</button>
-        <button onclick="backToLobby()">Leave Game</button>
+        <button onclick="undoMove()">↩ Undo</button>
+        <button onclick="offerDraw()">🤝 Draw</button>
+        <button onclick="resignGame()">🏳 Resign</button>
+        <button onclick="backToLobby()">🚪 Leave</button>
+        <button id="sound-toggle" onclick="toggleSound()">🔊 Sound</button>
     </div>
 </div>
 
@@ -97,10 +135,8 @@
     </div>
 </div>
 
-<!-- Firebase SDK (CDN / compat version for simplicity) -->
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
-
 <script src="game.js"></script>
 </body>
 </html>

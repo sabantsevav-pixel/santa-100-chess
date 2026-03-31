@@ -788,3 +788,179 @@ button:active {
         padding-right: env(safe-area-inset-right);
     }
 }
+
+/* ============================================================
+   TIMER SELECT (Lobby)
+   ============================================================ */
+
+.timer-label {
+    color: #e0c068;
+    font-size: 1rem;
+    font-weight: bold;
+}
+
+#time-control {
+    padding: 10px 15px;
+    font-size: 1rem;
+    border: 2px solid #e0c068;
+    border-radius: 8px;
+    background: #16213e;
+    color: #e0c068;
+    cursor: pointer;
+    width: 100%;
+    max-width: 280px;
+    appearance: none;
+    -webkit-appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8'%3E%3Cpath d='M0 0 L6 8 L12 0' fill='%23e0c068'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 12px center;
+    padding-right: 35px;
+}
+
+#time-control option,
+#time-control optgroup {
+    background: #16213e;
+    color: #e0c068;
+}
+
+#time-control optgroup {
+    font-weight: bold;
+    font-style: normal;
+}
+
+#waiting-time-control {
+    color: #aaa;
+    font-size: 0.9rem;
+    margin: 8px 0;
+}
+
+/* ============================================================
+   CHESS CLOCKS
+   ============================================================ */
+
+.chess-clock {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 16px;
+    margin: 4px 0;
+    border-radius: 8px;
+    border: 2px solid #333;
+    background: #16213e;
+    width: 100%;
+    max-width: 640px;
+    min-height: 44px;
+    transition: all 0.3s;
+}
+
+.chess-clock.hidden {
+    display: none !important;
+}
+
+.chess-clock.active {
+    border-color: #e0c068;
+    background: #1c2a4a;
+    box-shadow: 0 0 10px rgba(224, 192, 104, 0.2);
+}
+
+.chess-clock.low-time {
+    border-color: #e87272;
+    animation: clock-pulse 1s infinite;
+}
+
+@keyframes clock-pulse {
+    0%, 100% { background: #1c2a4a; }
+    50% { background: #2a1a1a; }
+}
+
+.chess-clock.flagged {
+    border-color: #e87272;
+    background: #2a1111;
+}
+
+.clock-player-label {
+    font-size: 0.9rem;
+    color: #aaa;
+    font-weight: bold;
+    min-width: 80px;
+}
+
+.clock-time {
+    font-family: 'Courier New', monospace;
+    font-size: 1.6rem;
+    font-weight: bold;
+    color: #e0e0e0;
+    letter-spacing: 2px;
+    min-width: 80px;
+    text-align: right;
+}
+
+.chess-clock.active .clock-time {
+    color: #e0c068;
+}
+
+.chess-clock.low-time .clock-time {
+    color: #e87272;
+}
+
+.chess-clock.flagged .clock-time {
+    color: #e87272;
+}
+
+/* ============================================================
+   RESPONSIVE CLOCK ADJUSTMENTS
+   ============================================================ */
+
+@media screen and (max-width: 500px) {
+    .chess-clock {
+        padding: 5px 10px;
+        min-height: 36px;
+    }
+
+    .clock-player-label {
+        font-size: 0.75rem;
+        min-width: 60px;
+    }
+
+    .clock-time {
+        font-size: 1.2rem;
+        min-width: 65px;
+    }
+}
+
+@media screen and (max-width: 400px) {
+    .clock-time {
+        font-size: 1rem;
+    }
+
+    .clock-player-label {
+        font-size: 0.7rem;
+    }
+}
+
+@media screen and (max-height: 500px) and (orientation: landscape) {
+    .chess-clock {
+        padding: 3px 8px;
+        min-height: 30px;
+        margin: 2px 0;
+    }
+
+    .clock-time {
+        font-size: 1rem;
+    }
+
+    .clock-player-label {
+        font-size: 0.7rem;
+    }
+}
+
+@media screen and (max-height: 400px) and (orientation: landscape) {
+    .chess-clock {
+        min-height: 24px;
+        padding: 2px 6px;
+    }
+
+    .clock-time {
+        font-size: 0.85rem;
+    }
+}

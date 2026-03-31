@@ -2,7 +2,7 @@
 // FIREBASE CONFIGURATION
 // ============================================================
 
-const firebaseConfig = {
+var firebaseConfig = {
     apiKey: "AIzaSyAZDT9WWgYQQTXvGvIaZoVs8jnU4Hyg8sg",
     authDomain: "santa-100-chess.firebaseapp.com",
     databaseURL: "https://santa-100-chess-default-rtdb.firebaseio.com",
@@ -13,69 +13,329 @@ const firebaseConfig = {
 };
 
 firebase.initializeApp(firebaseConfig);
-const db = firebase.database();
+var db = firebase.database();
 
 // ============================================================
-// PIECE IMAGES
+// SOUND ENGINE
 // ============================================================
 
-const PIECE_SET = 'pieces/cburnett';
+var audioCtx = null;
+var soundEnabled = true;
 
-function pieceHTML(type, color) {
-    const prefix = color === 'white' ? 'w' : 'b';
-    return `<img class="piece-img" src="${PIECE_SET}/${prefix}${type}.svg" alt="${color} ${type}" draggable="false">`;
+function getAudioContext() {
+    if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+    return audioCtx;
+}
+
+function playTone(freq, dur, type, vol, decay) {
+    if (!soundEnabled) return;
+    type = type || 'sine'; vol = vol || 0.3; decay = decay !== false;
+    try {
+        var ctx = getAudioContext();
+        var o = ctx.createOscillator(), g = ctx.createGain();
+        o.connect(g); g.connect(ctx.destination);
+        o.type = type; o.frequency.setValueAtTime(freq, ctx.currentTime);
+        g.gain.setValueAtTime(vol, ctx.currentTime);
+        if (decay) g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + dur);
+        o.start(ctx.currentTime); o.stop(ctx.currentTime + dur);
+    } catch(e) {}
+}
+
+function playNoise(dur, vol) {
+    if (!soundEnabled) return; vol = vol || 0.15;
+    try {
+        var ctx = getAudioContext();
+        var sz = ctx.sampleRate * dur, buf = ctx.createBuffer(1, sz, ctx.sampleRate);
+        var d = buf.getChannelData(0);
+        for (var i = 0; i < sz; i++) d[i] = (Math.random()*2-1) * Math.pow(1-i/sz, 3);
+        var src = ctx.createBufferSource(), g = ctx.createGain();
+        src.buffer = buf; src.connect(g); g.connect(ctx.destination);
+        g.gain.setValueAtTime(vol, ctx.currentTime);
+        g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + dur);
+        src.start(ctx.currentTime);
+    } catch(e) {}
+}
+
+function soundMove()    { playNoise(0.08,0.2); playTone(200,0.08,'sine',0.15); }
+function soundCapture() { playNoise(0.1,0.35); playTone(300,0.06,'square',0.15); setTimeout(function(){playTone(250,0.06,'square',0.1);},30); }
+function soundCheck()   { playTone(880,0.12,'sine',0.25); setTimeout(function(){playTone(880,0.12,'sine',0.25);},150); }
+function soundCheckmate(){ playTone(523,0.4,'sine',0.3); setTimeout(function(){playTone(659,0.4,'sine',0.25);},100); setTimeout(function(){playTone(784,0.4,'sine',0.25);},200); setTimeout(function(){playTone(1047,0.6,'sine',0.3);},300); }
+function soundCastle()  { soundMove(); setTimeout(function(){soundMove();},150); }
+function soundPromotion(){ playTone(400,0.12,'sine',0.2); setTimeout(function(){playTone(500,0.12,'sine',0.2);},80); setTimeout(function(){playTone(630,0.12,'sine',0.2);},160); setTimeout(function(){playTone(800,0.2,'sine',0.25);},240); }
+function soundGameStart(){ playTone(523,0.3,'sine',0.15); setTimeout(function(){playTone(659,0.3,'sine',0.15);},120); setTimeout(function(){playTone(784,0.4,'sine',0.2);},240); }
+function soundError()   { playTone(100,0.2,'sawtooth',0.15); }
+function soundNotify()  { playTone(1200,0.15,'sine',0.2); setTimeout(function(){playTone(1600,0.2,'sine',0.15);},100); }
+function soundVictory() { playTone(523,0.2,'sine',0.2); setTimeout(function(){playTone(659,0.2,'sine',0.2);},150); setTimeout(function(){playTone(784,0.2,'sine',0.2);},300); setTimeout(function(){playTone(1047,0.4,'sine',0.3);},450); setTimeout(function(){playTone(1047,0.5,'sine',0.2);playTone(1319,0.5,'sine',0.2);playTone(1568,0.5,'sine',0.2);},650); }
+function soundDefeat()  { playTone(400,0.3,'sine',0.2); setTimeout(function(){playTone(350,0.3,'sine',0.2);},200); setTimeout(function(){playTone(300,0.3,'sine',0.2);},400); setTimeout(function(){playTone(200,0.5,'sine',0.15);},600); }
+function soundDraw()    { playTone(500,0.25,'sine',0.2); setTimeout(function(){playTone(500,0.25,'sine',0.2);},300); }
+function soundLowTime() { playTone(600,0.08,'sine',0.2); }
+function soundFlag()    { playTone(200,0.5,'square',0.25); setTimeout(function(){playTone(150,0.5,'square',0.2);},200); }
+
+function toggleSound() {
+    soundEnabled = !soundEnabled;
+    document.getElementById('sound-toggle').textContent = soundEnabled ? '🔊 Sound' : '🔇 Muted';
+    if (soundEnabled) playTone(800,0.1,'sine',0.15);
 }
 
 // ============================================================
-// GAME CONSTANTS
+// PIECE IMAGES & CONSTANTS
 // ============================================================
 
-const BOARD_SIZE = 10;
-const FILES = ['a','b','c','d','e','f','g','h','i','j'];
-const EMPTY = null;
-const KING = 'K', QUEEN = 'Q', ROOK = 'R', BISHOP = 'B', KNIGHT = 'N', MUSKETEER = 'M', PAWN = 'P';
-const WHITE = 'white', BLACK = 'black';
+var PIECE_SET = 'pieces/cburnett';
+function pieceHTML(type, color) {
+    var prefix = color === 'white' ? 'w' : 'b';
+    return '<img class="piece-img" src="'+PIECE_SET+'/'+prefix+type+'.svg" alt="'+color+' '+type+'" draggable="false">';
+}
+
+var BOARD_SIZE = 10;
+var FILES = ['a','b','c','d','e','f','g','h','i','j'];
+var EMPTY = null;
+var KING='K', QUEEN='Q', ROOK='R', BISHOP='B', KNIGHT='N', MUSKETEER='M', PAWN='P';
+var WHITE='white', BLACK='black';
+
+// ============================================================
+// TIME CONTROLS
+// ============================================================
+
+var TIME_CONTROLS = {
+    'none':  { initial: 0, increment: 0, label: 'No Timer' },
+    '1+0':   { initial: 60, increment: 0, label: '1+0 Bullet' },
+    '1+1':   { initial: 60, increment: 1, label: '1+1 Bullet' },
+    '2+1':   { initial: 120, increment: 1, label: '2+1 Bullet' },
+    '3+0':   { initial: 180, increment: 0, label: '3+0 Blitz' },
+    '3+2':   { initial: 180, increment: 2, label: '3+2 Blitz' },
+    '5+0':   { initial: 300, increment: 0, label: '5+0 Blitz' },
+    '5+3':   { initial: 300, increment: 3, label: '5+3 Blitz' },
+    '10+0':  { initial: 600, increment: 0, label: '10+0 Rapid' },
+    '10+5':  { initial: 600, increment: 5, label: '10+5 Rapid' },
+    '15+10': { initial: 900, increment: 10, label: '15+10 Rapid' }
+};
 
 // ============================================================
 // GAME STATE
 // ============================================================
 
-let board = [];
-let currentTurn = WHITE;
-let selectedSquare = null;
-let validMoves = [];
-let moveHistory = [];
-let stateHistory = [];
-let lastMove = null;
-let kingMoved = { white: false, black: false };
-let rookMoved = { white: { a: false, j: false }, black: { a: false, j: false } };
-let enPassantTarget = null;
-let pendingPromotion = null;
+var board = [];
+var currentTurn = WHITE;
+var selectedSquare = null;
+var validMoves = [];
+var moveHistory = [];
+var stateHistory = [];
+var lastMove = null;
+var kingMoved = { white: false, black: false };
+var rookMoved = { white: { a: false, j: false }, black: { a: false, j: false } };
+var enPassantTarget = null;
+var pendingPromotion = null;
+
+// ============================================================
+// TIMER STATE
+// ============================================================
+
+var timeControl = 'none';
+var timerWhite = 0;          // milliseconds remaining
+var timerBlack = 0;
+var timerIncrement = 0;      // seconds per move
+var timerInterval = null;    // setInterval handle
+var lastTickTime = 0;        // for accurate timing
+var timerStarted = false;    // timer starts after first move
+var lowTimeWarned = { white: false, black: false };
 
 // ============================================================
 // MULTIPLAYER STATE
 // ============================================================
 
-let gameMode = 'local';
-let roomCode = null;
-let playerColor = null;
-let gameRef = null;
-let gameListener = null;
-let playerId = generatePlayerId();
-let moveCounter = 0;          // Increments with each move
-let lastSyncedMove = -1;      // Last move counter we processed from Firebase
-let isSyncing = false;         // Prevents re-entrant updates
-let gameOver = false;          // Prevents further moves after game ends
+var gameMode = 'local';
+var roomCode = null;
+var playerColor = null;
+var gameRef = null;
+var gameListener = null;
+var playerId = generatePlayerId();
+var moveCounter = 0;
+var lastSyncedMove = -1;
+var isSyncing = false;
+var gameOver = false;
 
 function generatePlayerId() {
     return 'player_' + Math.random().toString(36).substr(2, 9);
 }
-
 function generateRoomCode() {
-    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-    let code = '';
-    for (let i = 0; i < 6; i++) code += chars[Math.floor(Math.random() * chars.length)];
+    var chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+    var code = '';
+    for (var i = 0; i < 6; i++) code += chars[Math.floor(Math.random() * chars.length)];
     return code;
+}
+
+// ============================================================
+// TIMER FUNCTIONS
+// ============================================================
+
+function initTimers(tc) {
+    timeControl = tc;
+    var config = TIME_CONTROLS[tc];
+    if (!config || tc === 'none') {
+        timeControl = 'none';
+        timerWhite = 0;
+        timerBlack = 0;
+        timerIncrement = 0;
+        timerStarted = false;
+        lowTimeWarned = { white: false, black: false };
+        return;
+    }
+    timerWhite = config.initial * 1000;
+    timerBlack = config.initial * 1000;
+    timerIncrement = config.increment * 1000;
+    timerStarted = false;
+    lowTimeWarned = { white: false, black: false };
+}
+
+function startTimerTick() {
+    if (timerInterval) clearInterval(timerInterval);
+    if (timeControl === 'none') return;
+
+    lastTickTime = Date.now();
+    timerInterval = setInterval(function() {
+        if (gameOver || !timerStarted) return;
+        if (pendingPromotion) return;
+
+        var now = Date.now();
+        var elapsed = now - lastTickTime;
+        lastTickTime = now;
+
+        if (currentTurn === WHITE) {
+            timerWhite -= elapsed;
+            if (timerWhite <= 0) {
+                timerWhite = 0;
+                onTimeOut(WHITE);
+                return;
+            }
+        } else {
+            timerBlack -= elapsed;
+            if (timerBlack <= 0) {
+                timerBlack = 0;
+                onTimeOut(BLACK);
+                return;
+            }
+        }
+
+        // Low time warning (under 30 seconds)
+        checkLowTime(WHITE);
+        checkLowTime(BLACK);
+
+        updateClockDisplay();
+    }, 100);
+}
+
+function stopTimerTick() {
+    if (timerInterval) {
+        clearInterval(timerInterval);
+        timerInterval = null;
+    }
+}
+
+function checkLowTime(color) {
+    var time = color === WHITE ? timerWhite : timerBlack;
+    if (time > 0 && time <= 30000 && !lowTimeWarned[color]) {
+        lowTimeWarned[color] = true;
+        if (gameMode === 'local' || color === playerColor) {
+            soundLowTime();
+        }
+    }
+}
+
+function onTimeOut(color) {
+    stopTimerTick();
+    gameOver = true;
+    var winner = color === WHITE ? 'Black' : 'White';
+    var message = winner + ' wins on time!';
+
+    soundFlag();
+    updateClockDisplay();
+
+    if (gameMode === 'online') {
+        syncGameOverToFirebase(message);
+    }
+
+    setTimeout(function() { showGameOver(message); }, 300);
+}
+
+function addIncrement(color) {
+    if (timeControl === 'none' || timerIncrement === 0) return;
+    if (color === WHITE) {
+        timerWhite += timerIncrement;
+    } else {
+        timerBlack += timerIncrement;
+    }
+}
+
+function formatTime(ms) {
+    if (ms <= 0) return '0:00';
+    var totalSeconds = Math.ceil(ms / 1000);
+    var minutes = Math.floor(totalSeconds / 60);
+    var seconds = totalSeconds % 60;
+
+    if (ms <= 10000) {
+        // Under 10 seconds: show tenths
+        var tenths = Math.floor((ms % 1000) / 100);
+        return seconds + '.' + tenths;
+    }
+
+    return minutes + ':' + (seconds < 10 ? '0' : '') + seconds;
+}
+
+function updateClockDisplay() {
+    var flipped = (gameMode === 'online' && playerColor === BLACK);
+
+    var topColor, bottomColor;
+    if (flipped) {
+        topColor = WHITE;
+        bottomColor = BLACK;
+    } else {
+        topColor = BLACK;
+        bottomColor = WHITE;
+    }
+
+    var clockTop = document.getElementById('clock-top');
+    var clockBottom = document.getElementById('clock-bottom');
+    var topTime = document.getElementById('clock-top-time');
+    var bottomTime = document.getElementById('clock-bottom-time');
+    var topLabel = document.getElementById('clock-top-label');
+    var bottomLabel = document.getElementById('clock-bottom-label');
+
+    if (timeControl === 'none') {
+        clockTop.classList.add('hidden');
+        clockBottom.classList.add('hidden');
+        return;
+    }
+
+    clockTop.classList.remove('hidden');
+    clockBottom.classList.remove('hidden');
+
+    var topMs = topColor === WHITE ? timerWhite : timerBlack;
+    var bottomMs = bottomColor === WHITE ? timerWhite : timerBlack;
+
+    topTime.textContent = formatTime(topMs);
+    bottomTime.textContent = formatTime(bottomMs);
+
+    if (gameMode === 'online') {
+        topLabel.textContent = topColor === playerColor ? 'You (' + topColor + ')' : 'Opponent (' + topColor + ')';
+        bottomLabel.textContent = bottomColor === playerColor ? 'You (' + bottomColor + ')' : 'Opponent (' + bottomColor + ')';
+    } else {
+        topLabel.textContent = topColor === WHITE ? '⬜ White' : '⬛ Black';
+        bottomLabel.textContent = bottomColor === WHITE ? '⬜ White' : '⬛ Black';
+    }
+
+    // Active state
+    clockTop.classList.toggle('active', timerStarted && currentTurn === topColor && !gameOver);
+    clockBottom.classList.toggle('active', timerStarted && currentTurn === bottomColor && !gameOver);
+
+    // Low time state
+    clockTop.classList.toggle('low-time', topMs > 0 && topMs <= 30000 && timerStarted && currentTurn === topColor);
+    clockBottom.classList.toggle('low-time', bottomMs > 0 && bottomMs <= 30000 && timerStarted && currentTurn === bottomColor);
+
+    // Flagged state
+    clockTop.classList.toggle('flagged', topMs <= 0);
+    clockBottom.classList.toggle('flagged', bottomMs <= 0);
 }
 
 // ============================================================
@@ -83,13 +343,13 @@ function generateRoomCode() {
 // ============================================================
 
 function createStartingBoard() {
-    let b = [];
-    for (let r = 0; r < BOARD_SIZE; r++) {
+    var b = [];
+    for (var r = 0; r < BOARD_SIZE; r++) {
         b[r] = [];
-        for (let c = 0; c < BOARD_SIZE; c++) b[r][c] = EMPTY;
+        for (var c = 0; c < BOARD_SIZE; c++) b[r][c] = EMPTY;
     }
-    const backRank = [ROOK, KNIGHT, BISHOP, MUSKETEER, QUEEN, KING, MUSKETEER, BISHOP, KNIGHT, ROOK];
-    for (let c = 0; c < 10; c++) {
+    var backRank = [ROOK,KNIGHT,BISHOP,MUSKETEER,QUEEN,KING,MUSKETEER,BISHOP,KNIGHT,ROOK];
+    for (var c = 0; c < 10; c++) {
         b[9][c] = { type: backRank[c], color: WHITE };
         b[8][c] = { type: PAWN, color: WHITE, hasMoved: false };
         b[0][c] = { type: backRank[c], color: BLACK };
@@ -114,25 +374,23 @@ function initGameState() {
     lastSyncedMove = -1;
     isSyncing = false;
     gameOver = false;
+    stopTimerTick();
 }
 
 // ============================================================
-// SERIALIZATION (for Firebase)
+// SERIALIZATION
 // ============================================================
 
 function serializeBoard(b) {
-    let s = [];
-    for (let r = 0; r < BOARD_SIZE; r++) {
+    var s = [];
+    for (var r = 0; r < BOARD_SIZE; r++)
+		    {
         s[r] = [];
-        for (let c = 0; c < BOARD_SIZE; c++) {
+        for (var c = 0; c < BOARD_SIZE; c++) {
             if (b[r][c] === EMPTY) {
-                s[r][c] = 0;  // Use 0 instead of null for Firebase
+                s[r][c] = 0;
             } else {
-                s[r][c] = {
-                    t: b[r][c].type,
-                    c: b[r][c].color === WHITE ? 'w' : 'b',
-                    m: b[r][c].hasMoved || false
-                };
+                s[r][c] = { t: b[r][c].type, c: b[r][c].color === WHITE ? 'w' : 'b', m: b[r][c].hasMoved || false };
             }
         }
     }
@@ -140,18 +398,14 @@ function serializeBoard(b) {
 }
 
 function deserializeBoard(s) {
-    let b = [];
-    for (let r = 0; r < BOARD_SIZE; r++) {
+    var b = [];
+    for (var r = 0; r < BOARD_SIZE; r++) {
         b[r] = [];
-        for (let c = 0; c < BOARD_SIZE; c++) {
+        for (var c = 0; c < BOARD_SIZE; c++) {
             if (!s[r][c] || s[r][c] === 0) {
                 b[r][c] = EMPTY;
             } else {
-                b[r][c] = {
-                    type: s[r][c].t,
-                    color: s[r][c].c === 'w' ? WHITE : BLACK,
-                    hasMoved: s[r][c].m || false
-                };
+                b[r][c] = { type: s[r][c].t, color: s[r][c].c === 'w' ? WHITE : BLACK, hasMoved: s[r][c].m || false };
             }
         }
     }
@@ -161,15 +415,18 @@ function deserializeBoard(s) {
 function serializeGameState() {
     return {
         board: serializeBoard(board),
-        currentTurn,
-        kingMoved,
-        rookMoved,
+        currentTurn: currentTurn,
+        kingMoved: kingMoved,
+        rookMoved: rookMoved,
         enPassantTarget: enPassantTarget || null,
         lastMove: lastMove || null,
         moveHistory: moveHistory || [],
         moveCounter: moveCounter,
         lastMoveBy: playerColor,
-        gameOverMessage: null
+        gameOverMessage: null,
+        timerWhite: timerWhite,
+        timerBlack: timerBlack,
+        timerLastUpdate: Date.now()
     };
 }
 
@@ -185,6 +442,20 @@ function applyGameState(data) {
     selectedSquare = null;
     validMoves = [];
     pendingPromotion = null;
+
+    // Sync timer values from Firebase
+    if (data.timerWhite !== undefined) {
+        var serverDelay = Date.now() - (data.timerLastUpdate || Date.now());
+        timerWhite = data.timerWhite;
+        timerBlack = data.timerBlack;
+        // Subtract time elapsed since the move was made (compensate for network delay)
+        if (timerStarted && serverDelay > 0 && serverDelay < 5000) {
+            if (currentTurn === WHITE) timerWhite -= serverDelay;
+            else timerBlack -= serverDelay;
+        }
+        if (timerWhite < 0) timerWhite = 0;
+        if (timerBlack < 0) timerBlack = 0;
+    }
 }
 
 // ============================================================
@@ -192,17 +463,15 @@ function applyGameState(data) {
 // ============================================================
 
 function renderBoard() {
-    const boardEl = document.getElementById('board');
+    var boardEl = document.getElementById('board');
     boardEl.innerHTML = '';
+    var flipped = (gameMode === 'online' && playerColor === BLACK);
 
-    const flipped = (gameMode === 'online' && playerColor === BLACK);
-
-    for (let ri = 0; ri < BOARD_SIZE; ri++) {
-        for (let ci = 0; ci < BOARD_SIZE; ci++) {
-            const r = flipped ? (BOARD_SIZE - 1 - ri) : ri;
-            const c = flipped ? (BOARD_SIZE - 1 - ci) : ci;
-
-            const sq = document.createElement('div');
+    for (var ri = 0; ri < BOARD_SIZE; ri++) {
+        for (var ci = 0; ci < BOARD_SIZE; ci++) {
+            var r = flipped ? (BOARD_SIZE - 1 - ri) : ri;
+            var c = flipped ? (BOARD_SIZE - 1 - ci) : ci;
+            var sq = document.createElement('div');
             sq.classList.add('square', (r + c) % 2 === 0 ? 'light' : 'dark');
 
             if (lastMove) {
@@ -211,59 +480,58 @@ function renderBoard() {
             }
             if (selectedSquare && selectedSquare.r === r && selectedSquare.c === c) sq.classList.add('selected');
 
-            const vm = validMoves.find(m => m.r === r && m.c === c);
+            var vm = validMoves.find(function(m) { return m.r === r && m.c === c; });
             if (vm) sq.classList.add(board[r][c] !== EMPTY || vm.enPassant ? 'valid-capture' : 'valid-move');
-
             if (board[r][c]) sq.innerHTML = pieceHTML(board[r][c].type, board[r][c].color);
 
-            sq.addEventListener('click', () => onSquareClick(r, c));
+            (function(row, col) {
+                sq.addEventListener('click', function() { onSquareClick(row, col); });
+            })(r, c);
             boardEl.appendChild(sq);
         }
     }
 
-    const rankLabels = document.getElementById('rank-labels');
+    var rankLabels = document.getElementById('rank-labels');
     rankLabels.innerHTML = '';
-    for (let ri = 0; ri < BOARD_SIZE; ri++) {
-        const r = flipped ? ri : (BOARD_SIZE - 1 - ri);
-        const d = document.createElement('div');
+    for (var ri = 0; ri < BOARD_SIZE; ri++) {
+        var r = flipped ? ri : (BOARD_SIZE - 1 - ri);
+        var d = document.createElement('div');
         d.textContent = r + 1;
         rankLabels.appendChild(d);
     }
 
-    const fileLabels = document.getElementById('file-labels');
+    var fileLabels = document.getElementById('file-labels');
     fileLabels.innerHTML = '';
-    for (let ci = 0; ci < BOARD_SIZE; ci++) {
-        const c = flipped ? (BOARD_SIZE - 1 - ci) : ci;
-        const d = document.createElement('div');
+    for (var ci = 0; ci < BOARD_SIZE; ci++) {
+        var c = flipped ? (BOARD_SIZE - 1 - ci) : ci;
+        var d = document.createElement('div');
         d.textContent = FILES[c];
         fileLabels.appendChild(d);
     }
+
+    updateClockDisplay();
 }
 
 function updateTurnIndicator() {
-    const el = document.getElementById('turn-indicator');
+    var el = document.getElementById('turn-indicator');
     el.textContent = currentTurn === WHITE ? "White's turn" : "Black's turn";
-
     if (gameMode === 'online') {
-        if (currentTurn === playerColor) {
-            el.textContent += ' (Your turn)';
-        } else {
-            el.textContent += ' (Waiting...)';
-        }
+        el.textContent += currentTurn === playerColor ? ' (Your turn)' : ' (Waiting...)';
     }
 }
 
 function updateMoveHistory() {
-    const el = document.getElementById('move-history');
-    let html = '';
-    for (let i = 0; i < moveHistory.length; i += 2) {
-        html += `${Math.floor(i/2)+1}. ${moveHistory[i]}`;
-        if (i+1 < moveHistory.length) html += `  ${moveHistory[i+1]}`;
+    var el = document.getElementById('move-history');
+    var html = '';
+    for (var i = 0; i < moveHistory.length; i += 2) {
+        html += (Math.floor(i/2)+1) + '. ' + moveHistory[i];
+        if (i+1 < moveHistory.length) html += '  ' + moveHistory[i+1];
         html += '&nbsp;&nbsp;&nbsp;';
     }
     el.innerHTML = html;
     el.parentElement.scrollTop = el.parentElement.scrollHeight;
 }
+
 // ============================================================
 // LOBBY & MULTIPLAYER
 // ============================================================
@@ -275,11 +543,9 @@ function showLobby() {
     document.getElementById('game-over-modal').classList.remove('active');
     document.getElementById('draw-modal').classList.remove('active');
     document.getElementById('lobby-status').textContent = '';
-    if (gameRef) {
-        gameRef.off();
-        gameRef = null;
-    }
+    if (gameRef) { gameRef.off(); gameRef = null; }
     gameListener = null;
+    stopTimerTick();
 }
 
 function showGameScreen() {
@@ -287,11 +553,17 @@ function showGameScreen() {
     document.getElementById('game-screen').classList.remove('hidden');
 }
 
+function getSelectedTimeControl() {
+    return document.getElementById('time-control').value;
+}
+
 function startLocalGame() {
     gameMode = 'local';
     playerColor = null;
     roomCode = null;
+    var tc = getSelectedTimeControl();
     initGameState();
+    initTimers(tc);
     showGameScreen();
     document.getElementById('player-color-label').textContent = 'Local Game';
     document.getElementById('room-code-small').textContent = '';
@@ -299,40 +571,49 @@ function startLocalGame() {
     renderBoard();
     updateTurnIndicator();
     updateMoveHistory();
+    updateClockDisplay();
+    soundGameStart();
 }
 
 function createGame() {
     roomCode = generateRoomCode();
     gameMode = 'online';
     playerColor = WHITE;
+    var tc = getSelectedTimeControl();
 
     document.getElementById('waiting-area').classList.remove('hidden');
     document.getElementById('room-code-big').textContent = roomCode;
     document.getElementById('lobby-status').textContent = '';
 
+    var tcConfig = TIME_CONTROLS[tc];
+    document.getElementById('waiting-time-control').textContent =
+        'Time control: ' + (tcConfig ? tcConfig.label : 'No Timer');
+
     gameRef = db.ref('games/' + roomCode);
     initGameState();
+    initTimers(tc);
 
-    const gameData = {
+    var gameData = {
         status: 'waiting',
         white: playerId,
         black: null,
+        timeControl: tc,
         gameState: serializeGameState(),
         drawOffer: null,
         resign: null,
         createdAt: firebase.database.ServerValue.TIMESTAMP
     };
 
-    gameRef.set(gameData).then(() => {
+    gameRef.set(gameData).then(function() {
         listenForOpponent();
-    }).catch(err => {
+    }).catch(function(err) {
         document.getElementById('lobby-status').textContent = 'Error: ' + err.message;
     });
 }
 
 function listenForOpponent() {
-    gameRef.child('black').on('value', (snapshot) => {
-        const blackPlayer = snapshot.val();
+    gameRef.child('black').on('value', function(snapshot) {
+        var blackPlayer = snapshot.val();
         if (blackPlayer) {
             gameRef.child('black').off();
             gameRef.child('status').set('playing');
@@ -342,7 +623,7 @@ function listenForOpponent() {
 }
 
 function joinGame() {
-    const code = document.getElementById('join-code').value.trim().toUpperCase();
+    var code = document.getElementById('join-code').value.trim().toUpperCase();
     if (code.length !== 6) {
         document.getElementById('lobby-status').textContent = 'Please enter a 6-character room code.';
         return;
@@ -353,8 +634,8 @@ function joinGame() {
     playerColor = BLACK;
     gameRef = db.ref('games/' + roomCode);
 
-    gameRef.once('value').then((snapshot) => {
-        const data = snapshot.val();
+    gameRef.once('value').then(function(snapshot) {
+        var data = snapshot.val();
         if (!data) {
             document.getElementById('lobby-status').textContent = 'Game not found.';
             return;
@@ -363,15 +644,21 @@ function joinGame() {
             document.getElementById('lobby-status').textContent = 'Game already started or finished.';
             return;
         }
-        gameRef.child('black').set(playerId).then(() => {
-            // Load the initial game state
-            if (data.gameState) {
-                applyGameState(data.gameState);
-                lastSyncedMove = data.gameState.moveCounter || 0;
-            }
+
+        // Use the time control set by the game creator
+        var tc = data.timeControl || 'none';
+        initGameState();
+        initTimers(tc);
+
+        if (data.gameState) {
+            applyGameState(data.gameState);
+            lastSyncedMove = data.gameState.moveCounter || 0;
+        }
+
+        gameRef.child('black').set(playerId).then(function() {
             startOnlineGame();
         });
-    }).catch(err => {
+    }).catch(function(err) {
         document.getElementById('lobby-status').textContent = 'Error: ' + err.message;
     });
 }
@@ -381,92 +668,98 @@ function startOnlineGame() {
     showGameScreen();
 
     document.getElementById('player-color-label').textContent =
-        `You are: ${playerColor === WHITE ? '⬜ White' : '⬛ Black'}`;
-    document.getElementById('room-code-small').textContent = `Room: ${roomCode}`;
+        'You are: ' + (playerColor === WHITE ? '⬜ White' : '⬛ Black');
+    document.getElementById('room-code-small').textContent = 'Room: ' + roomCode;
     updateConnectionStatus(true);
 
     renderBoard();
     updateTurnIndicator();
     updateMoveHistory();
-
+    updateClockDisplay();
     listenForGameUpdates();
+    soundGameStart();
+
+    // Start ticking (timer only counts when moves begin)
+    startTimerTick();
 }
 
 function listenForGameUpdates() {
-    if (gameListener) {
-        gameRef.off('value', gameListener);
-    }
+    if (gameListener) gameRef.off('value', gameListener);
 
-    gameListener = gameRef.on('value', (snapshot) => {
-        const data = snapshot.val();
+    gameListener = gameRef.on('value', function(snapshot) {
+        var data = snapshot.val();
         if (!data) return;
-
-        // Don't process while we're syncing our own move
         if (isSyncing) return;
 
-        // Handle resignation
         if (data.resign) {
-            const winner = data.resign === WHITE ? BLACK : WHITE;
+            var winner = data.resign === WHITE ? BLACK : WHITE;
             gameOver = true;
-            showGameOver(`${winner === WHITE ? 'White' : 'Black'} wins — opponent resigned!`);
+            stopTimerTick();
+            showGameOver((winner === WHITE ? 'White' : 'Black') + ' wins — opponent resigned!');
             return;
         }
 
-        // Handle draw agreement
         if (data.status === 'draw') {
             gameOver = true;
+            stopTimerTick();
+            soundDraw();
             showGameOver('Game drawn by agreement!');
             return;
         }
 
-        // Handle draw offer (show modal only if it's from the opponent)
         if (data.drawOffer && data.drawOffer !== playerColor) {
             document.getElementById('draw-modal').classList.add('active');
+            soundNotify();
         }
 
-        // Handle game over message from the other player
         if (data.gameState && data.gameState.gameOverMessage) {
             gameOver = true;
+            stopTimerTick();
             applyGameState(data.gameState);
             renderBoard();
             updateTurnIndicator();
             updateMoveHistory();
+            updateClockDisplay();
             showGameOver(data.gameState.gameOverMessage);
             return;
         }
 
-        // Handle game state updates (opponent's moves)
         if (data.gameState) {
-            const remoteMoveCounter = data.gameState.moveCounter || 0;
-            const lastMoveBy = data.gameState.lastMoveBy;
+            var remoteMoveCounter = data.gameState.moveCounter || 0;
+            var lastMoveBy = data.gameState.lastMoveBy;
 
-            // Only apply if this is a NEW move made by the OPPONENT
             if (remoteMoveCounter > lastSyncedMove && lastMoveBy !== playerColor) {
                 lastSyncedMove = remoteMoveCounter;
                 applyGameState(data.gameState);
+
+                // Start timer after first move
+                if (!timerStarted && timeControl !== 'none' && remoteMoveCounter >= 1) {
+                    timerStarted = true;
+                    lastTickTime = Date.now();
+                }
+
                 renderBoard();
                 updateTurnIndicator();
                 updateMoveHistory();
+                updateClockDisplay();
+                soundMove();
             }
         }
     });
 
-    // Connection status
-    db.ref('.info/connected').on('value', (snap) => {
+    db.ref('.info/connected').on('value', function(snap) {
         updateConnectionStatus(snap.val() === true);
     });
 }
 
 function syncGameToFirebase() {
     if (gameMode !== 'online' || !gameRef) return;
-
     isSyncing = true;
-    const state = serializeGameState();
-
-    gameRef.child('gameState').set(state).then(() => {
+    var state = serializeGameState();
+    gameRef.child('gameState').set(state).then(function() {
         lastSyncedMove = moveCounter;
         isSyncing = false;
-    }).catch(err => {
+    }).catch(function(err) {
         console.error('Sync error:', err);
         isSyncing = false;
     });
@@ -474,70 +767,50 @@ function syncGameToFirebase() {
 
 function syncGameOverToFirebase(message) {
     if (gameMode !== 'online' || !gameRef) return;
-
     isSyncing = true;
-    const state = serializeGameState();
+    var state = serializeGameState();
     state.gameOverMessage = message;
-
-    gameRef.child('gameState').set(state).then(() => {
+    gameRef.child('gameState').set(state).then(function() {
         lastSyncedMove = moveCounter;
         isSyncing = false;
-    }).catch(err => {
+    }).catch(function(err) {
         console.error('Sync error:', err);
         isSyncing = false;
     });
 }
 
 function cancelGame() {
-    if (gameRef) {
-        gameRef.off();
-        gameRef.remove();
-        gameRef = null;
-    }
+    if (gameRef) { gameRef.off(); gameRef.remove(); gameRef = null; }
+    stopTimerTick();
     showLobby();
 }
 
 function backToLobby() {
-    if (gameRef) {
-        gameRef.off();
-        gameRef = null;
-    }
+    if (gameRef) { gameRef.off(); gameRef = null; }
     gameListener = null;
+    stopTimerTick();
     document.getElementById('game-over-modal').classList.remove('active');
     showLobby();
 }
 
 function copyRoomCode() {
-    navigator.clipboard.writeText(roomCode).then(() => {
+    navigator.clipboard.writeText(roomCode).then(function() {
         document.getElementById('lobby-status').textContent = 'Code copied!';
-        setTimeout(() => {
-            document.getElementById('lobby-status').textContent = '';
-        }, 2000);
+        setTimeout(function() { document.getElementById('lobby-status').textContent = ''; }, 2000);
     });
 }
 
 function updateConnectionStatus(connected) {
-    const el = document.getElementById('connection-status');
-    if (connected) {
-        el.textContent = '● Connected';
-        el.className = 'connected';
-    } else {
-        el.textContent = '● Disconnected';
-        el.className = 'disconnected';
-    }
+    var el = document.getElementById('connection-status');
+    if (connected) { el.textContent = '● Connected'; el.className = 'connected'; }
+    else { el.textContent = '● Disconnected'; el.className = 'disconnected'; }
 }
 
 function offerDraw() {
     if (gameOver) return;
-    if (gameMode === 'local') {
-        showGameOver('Game drawn by agreement!');
-        return;
-    }
+    if (gameMode === 'local') { soundDraw(); showGameOver('Game drawn by agreement!'); return; }
     if (gameMode === 'online' && gameRef) {
-        if (currentTurn !== playerColor) {
-            alert("You can only offer a draw on your turn.");
-            return;
-        }
+        if (currentTurn !== playerColor) { soundError(); alert("You can only offer a draw on your turn."); return; }
         gameRef.child('drawOffer').set(playerColor);
     }
 }
@@ -545,24 +818,18 @@ function offerDraw() {
 function respondDraw(accepted) {
     document.getElementById('draw-modal').classList.remove('active');
     if (!gameRef) return;
-
-    if (accepted) {
-        gameRef.child('status').set('draw');
-    } else {
-        gameRef.child('drawOffer').set(null);
-    }
+    if (accepted) gameRef.child('status').set('draw');
+    else gameRef.child('drawOffer').set(null);
 }
 
 function resignGame() {
     if (gameOver) return;
     if (gameMode === 'local') {
-        showGameOver(`${currentTurn === WHITE ? 'Black' : 'White'} wins — opponent resigned!`);
+        showGameOver((currentTurn === WHITE ? 'Black' : 'White') + ' wins — opponent resigned!');
         return;
     }
     if (gameMode === 'online' && gameRef) {
-        if (confirm('Are you sure you want to resign?')) {
-            gameRef.child('resign').set(playerColor);
-        }
+        if (confirm('Are you sure you want to resign?')) gameRef.child('resign').set(playerColor);
     }
 }
 
@@ -573,14 +840,12 @@ function resignGame() {
 function onSquareClick(r, c) {
     if (pendingPromotion) return;
     if (gameOver) return;
-
-    // In online mode, only allow moves on your turn
     if (gameMode === 'online' && currentTurn !== playerColor) return;
 
-    const piece = board[r][c];
+    var piece = board[r][c];
 
     if (selectedSquare) {
-        const vm = validMoves.find(m => m.r === r && m.c === c);
+        var vm = validMoves.find(function(m) { return m.r === r && m.c === c; });
         if (vm) {
             executeMove(selectedSquare.r, selectedSquare.c, r, c, vm);
             selectedSquare = null;
@@ -589,7 +854,7 @@ function onSquareClick(r, c) {
             return;
         }
         if (piece && piece.color === currentTurn) {
-            selectedSquare = { r, c };
+            selectedSquare = { r: r, c: c };
             validMoves = getValidMoves(r, c);
             renderBoard();
             return;
@@ -601,7 +866,7 @@ function onSquareClick(r, c) {
     }
 
     if (piece && piece.color === currentTurn) {
-        selectedSquare = { r, c };
+        selectedSquare = { r: r, c: c };
         validMoves = getValidMoves(r, c);
         renderBoard();
     }
@@ -612,9 +877,9 @@ function onSquareClick(r, c) {
 // ============================================================
 
 function getValidMoves(r, c) {
-    const piece = board[r][c];
+    var piece = board[r][c];
     if (!piece) return [];
-    let moves = [];
+    var moves = [];
     switch (piece.type) {
         case PAWN:      moves = getPawnMoves(r, c, piece.color); break;
         case KNIGHT:    moves = getKnightMoves(r, c, piece.color); break;
@@ -624,24 +889,19 @@ function getValidMoves(r, c) {
         case KING:      moves = getKingMoves(r, c, piece.color); break;
         case MUSKETEER: moves = getMusketeerMoves(r, c, piece.color); break;
     }
-    return moves.filter(m => !wouldBeInCheck(r, c, m.r, m.c, piece.color, m));
+    return moves.filter(function(m) { return !wouldBeInCheck(r, c, m.r, m.c, piece.color, m); });
 }
 
-function inBounds(r, c) {
-    return r >= 0 && r < BOARD_SIZE && c >= 0 && c < BOARD_SIZE;
-}
+function inBounds(r, c) { return r >= 0 && r < BOARD_SIZE && c >= 0 && c < BOARD_SIZE; }
 
 function getSlidingMoves(r, c, color, directions) {
-    let moves = [];
-    for (const [dr, dc] of directions) {
-        let nr = r + dr, nc = c + dc;
+    var moves = [];
+    for (var i = 0; i < directions.length; i++) {
+        var dr = directions[i][0], dc = directions[i][1];
+        var nr = r + dr, nc = c + dc;
         while (inBounds(nr, nc)) {
-            if (board[nr][nc] === EMPTY) {
-                moves.push({ r: nr, c: nc });
-            } else {
-                if (board[nr][nc].color !== color) moves.push({ r: nr, c: nc });
-                break;
-            }
+            if (board[nr][nc] === EMPTY) { moves.push({ r: nr, c: nc }); }
+            else { if (board[nr][nc].color !== color) moves.push({ r: nr, c: nc }); break; }
             nr += dr; nc += dc;
         }
     }
@@ -649,88 +909,66 @@ function getSlidingMoves(r, c, color, directions) {
 }
 
 function getMusketeerMoves(r, c, color) {
-    let moves = [];
-    const dirs = [[-1,-1],[-1,0],[-1,1],[0,-1],[0,1],[1,-1],[1,0],[1,1]];
-    for (const [dr, dc] of dirs) {
-        for (let step = 1; step <= 2; step++) {
-            const nr = r + dr * step, nc = c + dc * step;
+    var moves = [];
+    var dirs = [[-1,-1],[-1,0],[-1,1],[0,-1],[0,1],[1,-1],[1,0],[1,1]];
+    for (var i = 0; i < dirs.length; i++) {
+        for (var step = 1; step <= 2; step++) {
+            var nr = r + dirs[i][0]*step, nc = c + dirs[i][1]*step;
             if (!inBounds(nr, nc)) break;
-            if (board[nr][nc] === EMPTY) {
-                moves.push({ r: nr, c: nc });
-            } else {
-                if (board[nr][nc].color !== color) moves.push({ r: nr, c: nc });
-                break;
-            }
+            if (board[nr][nc] === EMPTY) { moves.push({ r: nr, c: nc }); }
+            else { if (board[nr][nc].color !== color) moves.push({ r: nr, c: nc }); break; }
         }
     }
     return moves;
 }
 
 function getKnightMoves(r, c, color) {
-    let moves = [];
-    const offsets = [
-        [-2,-1],[-2,1],[-1,-2],[-1,2],[1,-2],[1,2],[2,-1],[2,1],
-        [-3,-1],[-3,1],[-1,-3],[-1,3],[1,-3],[1,3],[3,-1],[3,1]
-    ];
-    for (const [dr, dc] of offsets) {
-        const nr = r + dr, nc = c + dc;
-        if (inBounds(nr, nc) && (board[nr][nc] === EMPTY || board[nr][nc].color !== color)) {
-            moves.push({ r: nr, c: nc });
-        }
+    var moves = [];
+    var offsets = [[-2,-1],[-2,1],[-1,-2],[-1,2],[1,-2],[1,2],[2,-1],[2,1],[-3,-1],[-3,1],[-1,-3],[-1,3],[1,-3],[1,3],[3,-1],[3,1]];
+    for (var i = 0; i < offsets.length; i++) {
+        var nr = r + offsets[i][0], nc = c + offsets[i][1];
+        if (inBounds(nr, nc) && (board[nr][nc] === EMPTY || board[nr][nc].color !== color)) moves.push({ r: nr, c: nc });
     }
     return moves;
 }
 
 function getPawnMoves(r, c, color) {
-    let moves = [];
-    const dir = color === WHITE ? -1 : 1;
-    const startRow = color === WHITE ? 8 : 1;
+    var moves = [];
+    var dir = color === WHITE ? -1 : 1;
+    var startRow = color === WHITE ? 8 : 1;
 
-    if (inBounds(r + dir, c) && board[r + dir][c] === EMPTY) {
-        moves.push({ r: r + dir, c });
-        if (r === startRow && board[r + 2 * dir][c] === EMPTY) {
-            moves.push({ r: r + 2 * dir, c });
-            if (inBounds(r + 3 * dir, c) && board[r + 3 * dir][c] === EMPTY) {
-                moves.push({ r: r + 3 * dir, c });
-            }
+    if (inBounds(r+dir, c) && board[r+dir][c] === EMPTY) {
+        moves.push({ r: r+dir, c: c });
+        if (r === startRow && board[r+2*dir][c] === EMPTY) {
+            moves.push({ r: r+2*dir, c: c });
+            if (inBounds(r+3*dir, c) && board[r+3*dir][c] === EMPTY) moves.push({ r: r+3*dir, c: c });
         }
     }
-
-    for (const dc of [-1, 1]) {
-        const nr = r + dir, nc = c + dc;
-        if (inBounds(nr, nc) && board[nr][nc] !== EMPTY && board[nr][nc].color !== color) {
-            moves.push({ r: nr, c: nc });
-        }
+    for (var di = 0; di < 2; di++) {
+        var dc = di === 0 ? -1 : 1;
+        var nr = r + dir, nc = c + dc;
+        if (inBounds(nr, nc) && board[nr][nc] !== EMPTY && board[nr][nc].color !== color) moves.push({ r: nr, c: nc });
     }
-
     if (enPassantTarget && enPassantTarget.color !== color) {
-        for (const epSq of enPassantTarget.squares) {
+        for (var ei = 0; ei < enPassantTarget.squares.length; ei++) {
+            var epSq = enPassantTarget.squares[ei];
             if (epSq.r === r + dir && Math.abs(epSq.c - c) === 1) {
-                moves.push({
-                    r: epSq.r, c: epSq.c,
-                    enPassant: true,
-                    captureR: enPassantTarget.pawnRow,
-                    captureC: enPassantTarget.pawnCol
-                });
+                moves.push({ r: epSq.r, c: epSq.c, enPassant: true, captureR: enPassantTarget.pawnRow, captureC: enPassantTarget.pawnCol });
             }
         }
     }
-
     return moves;
 }
 
 function getKingMoves(r, c, color) {
-    let moves = [];
-    const dirs = [[-1,-1],[-1,0],[-1,1],[0,-1],[0,1],[1,-1],[1,0],[1,1]];
-    for (const [dr, dc] of dirs) {
-        const nr = r + dr, nc = c + dc;
-        if (inBounds(nr, nc) && (board[nr][nc] === EMPTY || board[nr][nc].color !== color)) {
-            moves.push({ r: nr, c: nc });
-        }
+    var moves = [];
+    var dirs = [[-1,-1],[-1,0],[-1,1],[0,-1],[0,1],[1,-1],[1,0],[1,1]];
+    for (var i = 0; i < dirs.length; i++) {
+        var nr = r + dirs[i][0], nc = c + dirs[i][1];
+        if (inBounds(nr, nc) && (board[nr][nc] === EMPTY || board[nr][nc].color !== color)) moves.push({ r: nr, c: nc });
     }
-
     if (!kingMoved[color] && !isSquareAttacked(r, c, color)) {
-        const row = color === WHITE ? 9 : 0;
+        var row = color === WHITE ? 9 : 0;
         if (!rookMoved[color].j && board[row][9] && board[row][9].type === ROOK && board[row][9].color === color) {
             if (canCastle(row, 5, 7, 9, color)) moves.push({ r: row, c: 7, castling: 'kingSide2' });
             if (canCastle(row, 5, 8, 9, color)) moves.push({ r: row, c: 8, castling: 'kingSide3' });
@@ -741,20 +979,19 @@ function getKingMoves(r, c, color) {
             if (canCastle(row, 5, 1, 0, color)) moves.push({ r: row, c: 1, castling: 'queenSide4' });
         }
     }
-
     return moves;
 }
 
 function canCastle(row, kingCol, targetCol, rookCol, color) {
-    const minCol = Math.min(kingCol, targetCol, rookCol);
-    const maxCol = Math.max(kingCol, targetCol, rookCol);
-    for (let c = minCol + 1; c < maxCol; c++) {
+    var minCol = Math.min(kingCol, targetCol, rookCol);
+    var maxCol = Math.max(kingCol, targetCol, rookCol);
+    for (var c = minCol + 1; c < maxCol; c++) {
         if (c === kingCol || c === rookCol) continue;
         if (board[row][c] !== EMPTY) return false;
     }
     if (board[row][targetCol] !== EMPTY && targetCol !== rookCol) return false;
-    const step = targetCol > kingCol ? 1 : -1;
-    for (let c = kingCol; c !== targetCol + step; c += step) {
+    var step = targetCol > kingCol ? 1 : -1;
+    for (var c = kingCol; c !== targetCol + step; c += step) {
         if (isSquareAttacked(row, c, color)) return false;
     }
     return true;
@@ -765,57 +1002,52 @@ function canCastle(row, kingCol, targetCol, rookCol, color) {
 // ============================================================
 
 function findKing(color) {
-    for (let r = 0; r < BOARD_SIZE; r++) {
-        for (let c = 0; c < BOARD_SIZE; c++) {
-            if (board[r][c] && board[r][c].type === KING && board[r][c].color === color) return { r, c };
-        }
-    }
+    for (var r = 0; r < BOARD_SIZE; r++)
+        for (var c = 0; c < BOARD_SIZE; c++)
+            if (board[r][c] && board[r][c].type === KING && board[r][c].color === color) return { r: r, c: c };
     return null;
 }
 
 function isSquareAttacked(r, c, byColor) {
-    const enemy = byColor === WHITE ? BLACK : WHITE;
-
-    const pawnDir = enemy === WHITE ? -1 : 1;
-    for (const dc of [-1, 1]) {
-        const pr = r - pawnDir, pc = c + dc;
+    var enemy = byColor === WHITE ? BLACK : WHITE;
+    var pawnDir = enemy === WHITE ? -1 : 1;
+    var dcs = [-1, 1];
+    for (var di = 0; di < 2; di++) {
+        var pr = r - pawnDir, pc = c + dcs[di];
         if (inBounds(pr, pc) && board[pr][pc] && board[pr][pc].type === PAWN && board[pr][pc].color === enemy) return true;
     }
-
-    const knightOffsets = [
-        [-2,-1],[-2,1],[-1,-2],[-1,2],[1,-2],[1,2],[2,-1],[2,1],
-        [-3,-1],[-3,1],[-1,-3],[-1,3],[1,-3],[1,3],[3,-1],[3,1]
-    ];
-    for (const [dr, dc] of knightOffsets) {
-        const nr = r + dr, nc = c + dc;
+    var knightOffsets = [[-2,-1],[-2,1],[-1,-2],[-1,2],[1,-2],[1,2],[2,-1],[2,1],[-3,-1],[-3,1],[-1,-3],[-1,3],[1,-3],[1,3],[3,-1],[3,1]];
+    for (var i = 0; i < knightOffsets.length; i++) {
+        var nr = r + knightOffsets[i][0], nc = c + knightOffsets[i][1];
         if (inBounds(nr, nc) && board[nr][nc] && board[nr][nc].type === KNIGHT && board[nr][nc].color === enemy) return true;
     }
-
-    for (const [dr, dc] of [[-1,-1],[-1,0],[-1,1],[0,-1],[0,1],[1,-1],[1,0],[1,1]]) {
-        const nr = r + dr, nc = c + dc;
+    var kingDirs = [[-1,-1],[-1,0],[-1,1],[0,-1],[0,1],[1,-1],[1,0],[1,1]];
+    for (var i = 0; i < kingDirs.length; i++) {
+        var nr = r + kingDirs[i][0], nc = c + kingDirs[i][1];
         if (inBounds(nr, nc) && board[nr][nc] && board[nr][nc].type === KING && board[nr][nc].color === enemy) return true;
     }
-
-    const slidingChecks = [
+    var slidingChecks = [
         { dirs: [[-1,-1],[-1,1],[1,-1],[1,1]], types: [BISHOP, QUEEN] },
         { dirs: [[-1,0],[1,0],[0,-1],[0,1]], types: [ROOK, QUEEN] }
     ];
-    for (const { dirs, types } of slidingChecks) {
-        for (const [dr, dc] of dirs) {
-            let nr = r + dr, nc = c + dc;
+    for (var si = 0; si < slidingChecks.length; si++) {
+        var check = slidingChecks[si];
+        for (var di = 0; di < check.dirs.length; di++) {
+            var dr = check.dirs[di][0], dc = check.dirs[di][1];
+            var nr = r + dr, nc = c + dc;
             while (inBounds(nr, nc)) {
                 if (board[nr][nc] !== EMPTY) {
-                    if (board[nr][nc].color === enemy && types.includes(board[nr][nc].type)) return true;
+                    if (board[nr][nc].color === enemy && check.types.indexOf(board[nr][nc].type) !== -1) return true;
                     break;
                 }
                 nr += dr; nc += dc;
             }
         }
     }
-
-    for (const [dr, dc] of [[-1,-1],[-1,0],[-1,1],[0,-1],[0,1],[1,-1],[1,0],[1,1]]) {
-        for (let step = 1; step <= 2; step++) {
-            const nr = r + dr * step, nc = c + dc * step;
+    var muskDirs = [[-1,-1],[-1,0],[-1,1],[0,-1],[0,1],[1,-1],[1,0],[1,1]];
+    for (var i = 0; i < muskDirs.length; i++) {
+        for (var step = 1; step <= 2; step++) {
+            var nr = r + muskDirs[i][0]*step, nc = c + muskDirs[i][1]*step;
             if (!inBounds(nr, nc)) break;
             if (board[nr][nc] !== EMPTY) {
                 if (board[nr][nc].color === enemy && board[nr][nc].type === MUSKETEER) return true;
@@ -823,29 +1055,23 @@ function isSquareAttacked(r, c, byColor) {
             }
         }
     }
-
     return false;
 }
 
 function isInCheck(color) {
-    const king = findKing(color);
+    var king = findKing(color);
     if (!king) return false;
     return isSquareAttacked(king.r, king.c, color);
 }
 
 function wouldBeInCheck(fromR, fromC, toR, toC, color, moveInfo) {
-    const savedBoard = JSON.parse(JSON.stringify(board));
-    const savedEP = enPassantTarget ? JSON.parse(JSON.stringify(enPassantTarget)) : null;
-
+    var savedBoard = JSON.parse(JSON.stringify(board));
+    var savedEP = enPassantTarget ? JSON.parse(JSON.stringify(enPassantTarget)) : null;
     board[toR][toC] = board[fromR][fromC];
     board[fromR][fromC] = EMPTY;
-
-    if (moveInfo && moveInfo.enPassant) {
-        board[moveInfo.captureR][moveInfo.captureC] = EMPTY;
-    }
-
+    if (moveInfo && moveInfo.enPassant) board[moveInfo.captureR][moveInfo.captureC] = EMPTY;
     if (moveInfo && moveInfo.castling) {
-        const row = fromR;
+        var row = fromR;
         switch (moveInfo.castling) {
             case 'kingSide2':  board[row][6] = board[row][9]; board[row][9] = EMPTY; break;
             case 'kingSide3':  board[row][7] = board[row][9]; board[row][9] = EMPTY; break;
@@ -854,22 +1080,10 @@ function wouldBeInCheck(fromR, fromC, toR, toC, color, moveInfo) {
             case 'queenSide4': board[row][2] = board[row][0]; board[row][0] = EMPTY; break;
         }
     }
-
-    const inCheck = isInCheck(color);
+    var inCheck = isInCheck(color);
     board = savedBoard;
     enPassantTarget = savedEP;
     return inCheck;
-}
-
-function hasAnyLegalMoves(color) {
-    for (let r = 0; r < BOARD_SIZE; r++) {
-        for (let c = 0; c < BOARD_SIZE; c++) {
-            if (board[r][c] && board[r][c].color === color) {
-                if (getValidMoves(r, c).length > 0) return true;
-            }
-        }
-    }
-    return false;
 }
 
 // ============================================================
@@ -879,31 +1093,29 @@ function hasAnyLegalMoves(color) {
 function executeMove(fromR, fromC, toR, toC, moveInfo) {
     if (gameOver) return;
 
-    // Save state for undo (local only)
     if (gameMode === 'local') {
         stateHistory.push({
             board: JSON.parse(JSON.stringify(board)),
-            currentTurn,
+            currentTurn: currentTurn,
             kingMoved: JSON.parse(JSON.stringify(kingMoved)),
             rookMoved: JSON.parse(JSON.stringify(rookMoved)),
             enPassantTarget: enPassantTarget ? JSON.parse(JSON.stringify(enPassantTarget)) : null,
             lastMove: lastMove ? JSON.parse(JSON.stringify(lastMove)) : null,
-            moveHistoryLength: moveHistory.length
+            moveHistoryLength: moveHistory.length,
+            timerWhite: timerWhite,
+            timerBlack: timerBlack,
+            timerStarted: timerStarted
         });
     }
 
-    const piece = board[fromR][fromC];
-    const captured = board[toR][toC];
-    let notation = buildNotation(fromR, fromC, toR, toC, piece, captured, moveInfo);
+    var piece = board[fromR][fromC];
+    var captured = board[toR][toC];
+    var notation = buildNotation(fromR, fromC, toR, toC, piece, captured, moveInfo);
 
-    // En passant capture
-    if (moveInfo && moveInfo.enPassant) {
-        board[moveInfo.captureR][moveInfo.captureC] = EMPTY;
-    }
+    if (moveInfo && moveInfo.enPassant) board[moveInfo.captureR][moveInfo.captureC] = EMPTY;
 
-    // Castling rook movement
     if (moveInfo && moveInfo.castling) {
-        const row = fromR;
+        var row = fromR;
         switch (moveInfo.castling) {
             case 'kingSide2':  board[row][6] = board[row][9]; board[row][9] = EMPTY; break;
             case 'kingSide3':  board[row][7] = board[row][9]; board[row][9] = EMPTY; break;
@@ -913,53 +1125,57 @@ function executeMove(fromR, fromC, toR, toC, moveInfo) {
         }
     }
 
-    // Move piece
     board[toR][toC] = piece;
     board[fromR][fromC] = EMPTY;
 
-    // Update castling flags
     if (piece.type === KING) kingMoved[piece.color] = true;
     if (piece.type === ROOK) {
         if (fromC === 0) rookMoved[piece.color].a = true;
         if (fromC === 9) rookMoved[piece.color].j = true;
     }
     if (captured && captured.type === ROOK) {
-        const capturedColor = captured.color;
-        const rookRow = capturedColor === WHITE ? 9 : 0;
+        var capturedColor = captured.color;
+        var rookRow = capturedColor === WHITE ? 9 : 0;
         if (toR === rookRow && toC === 0) rookMoved[capturedColor].a = true;
         if (toR === rookRow && toC === 9) rookMoved[capturedColor].j = true;
     }
 
-    // Update en passant
     enPassantTarget = null;
     if (piece.type === PAWN) {
-        const distance = Math.abs(toR - fromR);
+        var distance = Math.abs(toR - fromR);
         if (distance >= 2) {
-            const dir = piece.color === WHITE ? -1 : 1;
-            let squares = [];
-            for (let step = 1; step < distance; step++) {
-                squares.push({ r: fromR + dir * step, c: fromC });
+            var pdir = piece.color === WHITE ? -1 : 1;
+            var squares = [];
+            for (var step = 1; step < distance; step++) {
+                squares.push({ r: fromR + pdir * step, c: fromC });
             }
-            enPassantTarget = {
-                color: piece.color,
-                pawnRow: toR,
-                pawnCol: toC,
-                squares: squares
-            };
+            enPassantTarget = { color: piece.color, pawnRow: toR, pawnCol: toC, squares: squares };
         }
         board[toR][toC].hasMoved = true;
     }
 
-    // Update last move
     lastMove = { from: { r: fromR, c: fromC }, to: { r: toR, c: toC } };
-
-    // Increment move counter
     moveCounter++;
 
+    // Play sound
+    if (moveInfo && moveInfo.castling) soundCastle();
+    else if (captured || (moveInfo && moveInfo.enPassant)) soundCapture();
+    else soundMove();
+
+    // Start timer after White's first move
+    if (!timerStarted && timeControl !== 'none') {
+        timerStarted = true;
+        lastTickTime = Date.now();
+        if (gameMode === 'local') startTimerTick();
+    }
+
+    // Add increment to the player who just moved
+    addIncrement(currentTurn);
+
     // Check for promotion
-    const promoRow = piece.color === WHITE ? 0 : 9;
+    var promoRow = piece.color === WHITE ? 0 : 9;
     if (piece.type === PAWN && toR === promoRow) {
-        pendingPromotion = { r: toR, c: toC, color: piece.color, notation };
+        pendingPromotion = { r: toR, c: toC, color: piece.color, notation: notation };
         showPromotionModal(piece.color);
         return;
     }
@@ -968,69 +1184,68 @@ function executeMove(fromR, fromC, toR, toC, moveInfo) {
 }
 
 function finalizeMove(notation) {
-    const mover = currentTurn;
-    const opponent = currentTurn === WHITE ? BLACK : WHITE;
+    var mover = currentTurn;
+    var opponent = currentTurn === WHITE ? BLACK : WHITE;
 
     if (isInCheck(opponent)) {
         if (hasAnyLegalMoves(opponent)) {
             notation += '+';
+            soundCheck();
         } else {
             notation += '#';
             moveHistory.push(notation);
             currentTurn = opponent;
             gameOver = true;
+            stopTimerTick();
 
-            const message = mover === WHITE ? 'White wins by checkmate!' : 'Black wins by checkmate!';
+            var message = mover === WHITE ? 'White wins by checkmate!' : 'Black wins by checkmate!';
+            soundCheckmate();
 
-            if (gameMode === 'online') {
-                syncGameOverToFirebase(message);
-            }
+            if (gameMode === 'online') syncGameOverToFirebase(message);
 
             updateMoveHistory();
             renderBoard();
             updateTurnIndicator();
-            showGameOver(message);
+            updateClockDisplay();
+            setTimeout(function() { showGameOver(message); }, 500);
             return;
         }
     } else if (!hasAnyLegalMoves(opponent)) {
         moveHistory.push(notation);
         currentTurn = opponent;
         gameOver = true;
+        stopTimerTick();
 
-        const message = 'Stalemate — Draw!';
+        var message = 'Stalemate — Draw!';
+        soundDraw();
 
-        if (gameMode === 'online') {
-            syncGameOverToFirebase(message);
-        }
+        if (gameMode === 'online') syncGameOverToFirebase(message);
 
         updateMoveHistory();
         renderBoard();
         updateTurnIndicator();
-        showGameOver(message);
+        updateClockDisplay();
+        setTimeout(function() { showGameOver(message); }, 500);
         return;
     }
 
     moveHistory.push(notation);
     currentTurn = opponent;
 
-    // Clear draw offers on move
-    if (gameMode === 'online' && gameRef) {
-        gameRef.child('drawOffer').set(null);
-    }
+    if (gameMode === 'online' && gameRef) gameRef.child('drawOffer').set(null);
 
     syncGameToFirebase();
     updateMoveHistory();
     renderBoard();
     updateTurnIndicator();
+    updateClockDisplay();
 }
 
 // ============================================================
 // NOTATION
 // ============================================================
 
-function squareName(r, c) {
-    return FILES[c] + (BOARD_SIZE - r);
-}
+function squareName(r, c) { return FILES[c] + (BOARD_SIZE - r); }
 
 function buildNotation(fromR, fromC, toR, toC, piece, captured, moveInfo) {
     if (moveInfo && moveInfo.castling) {
@@ -1042,9 +1257,7 @@ function buildNotation(fromR, fromC, toR, toC, piece, captured, moveInfo) {
             case 'queenSide4': return 'O-O-O-O(q)';
         }
     }
-
-    let n = '';
-
+    var n = '';
     if (piece.type === PAWN) {
         if (captured || (moveInfo && moveInfo.enPassant)) {
             n += FILES[fromC] + '×' + squareName(toR, toC);
@@ -1054,15 +1267,18 @@ function buildNotation(fromR, fromC, toR, toC, piece, captured, moveInfo) {
         }
     } else {
         n += piece.type;
-
-        let ambiguous = false, sameFile = false, sameRank = false;
-        for (let r = 0; r < BOARD_SIZE; r++) {
-            for (let c = 0; c < BOARD_SIZE; c++) {
+        var ambiguous = false, sameFile = false, sameRank = false;
+        for (var r = 0; r < BOARD_SIZE; r++) {
+            for (var c = 0; c < BOARD_SIZE; c++) {
                 if (r === fromR && c === fromC) continue;
-                const p = board[r][c];
+                var p = board[r][c];
                 if (p && p.type === piece.type && p.color === piece.color) {
-                    const moves = getRawMoves(r, c, p);
-                    if (moves.some(m => m.r === toR && m.c === toC)) {
+                    var moves = getRawMoves(r, c, p);
+                    var canReach = false;
+                    for (var mi = 0; mi < moves.length; mi++) {
+                        if (moves[mi].r === toR && moves[mi].c === toC) { canReach = true; break; }
+                    }
+                    if (canReach) {
                         ambiguous = true;
                         if (c === fromC) sameFile = true;
                         if (r === fromR) sameRank = true;
@@ -1075,11 +1291,9 @@ function buildNotation(fromR, fromC, toR, toC, piece, captured, moveInfo) {
             else if (!sameRank) n += (BOARD_SIZE - fromR);
             else n += FILES[fromC] + (BOARD_SIZE - fromR);
         }
-
         if (captured) n += '×';
         n += squareName(toR, toC);
     }
-
     return n;
 }
 
@@ -1101,31 +1315,32 @@ function getRawMoves(r, c, piece) {
 // ============================================================
 
 function showPromotionModal(color) {
-    const modal = document.getElementById('promotion-modal');
-    const buttonsDiv = document.getElementById('promo-buttons');
+    var modal = document.getElementById('promotion-modal');
+    var buttonsDiv = document.getElementById('promo-buttons');
     buttonsDiv.innerHTML = '';
-
-    const options = [QUEEN, ROOK, BISHOP, KNIGHT, MUSKETEER];
-    for (const type of options) {
-        const btn = document.createElement('span');
+    var options = [QUEEN, ROOK, BISHOP, KNIGHT, MUSKETEER];
+    for (var i = 0; i < options.length; i++) {
+        var btn = document.createElement('span');
         btn.classList.add('promo-option');
-        btn.innerHTML = pieceHTML(type, color);
-        btn.addEventListener('click', () => completePromotion(type));
+        btn.innerHTML = pieceHTML(options[i], color);
+        (function(type) {
+            btn.addEventListener('click', function() { completePromotion(type); });
+        })(options[i]);
         buttonsDiv.appendChild(btn);
     }
-
     modal.classList.add('active');
 }
 
 function completePromotion(type) {
     document.getElementById('promotion-modal').classList.remove('active');
-
-    const { r, c, color, notation } = pendingPromotion;
+    var r = pendingPromotion.r;
+    var c = pendingPromotion.c;
+    var color = pendingPromotion.color;
+    var notation = pendingPromotion.notation;
     board[r][c] = { type: type, color: color };
-
-    const fullNotation = notation + '=' + type;
+    var fullNotation = notation + '=' + type;
     pendingPromotion = null;
-
+    soundPromotion();
     finalizeMove(fullNotation);
 }
 
@@ -1135,6 +1350,7 @@ function completePromotion(type) {
 
 function undoMove() {
     if (gameMode === 'online') {
+        soundError();
         alert('Undo is not available in online games.');
         return;
     }
@@ -1146,7 +1362,7 @@ function undoMove() {
         pendingPromotion = null;
     }
 
-    const prev = stateHistory.pop();
+    var prev = stateHistory.pop();
     board = prev.board;
     currentTurn = prev.currentTurn;
     kingMoved = prev.kingMoved;
@@ -1155,12 +1371,22 @@ function undoMove() {
     lastMove = prev.lastMove;
     moveHistory.length = prev.moveHistoryLength;
 
+    // Restore timer state
+    if (prev.timerWhite !== undefined) {
+        timerWhite = prev.timerWhite;
+        timerBlack = prev.timerBlack;
+        timerStarted = prev.timerStarted;
+        lastTickTime = Date.now();
+    }
+
     selectedSquare = null;
     validMoves = [];
 
+    soundMove();
     renderBoard();
     updateTurnIndicator();
     updateMoveHistory();
+    updateClockDisplay();
 }
 
 // ============================================================
@@ -1169,8 +1395,25 @@ function undoMove() {
 
 function showGameOver(message) {
     gameOver = true;
+    stopTimerTick();
     document.getElementById('game-over-text').textContent = message;
     document.getElementById('game-over-modal').classList.add('active');
+
+    if (message.indexOf('Draw') !== -1 || message.indexOf('Stalemate') !== -1) {
+        // Draw sound already played
+    } else if (message.indexOf('time') !== -1) {
+        // Time sound already played
+    } else if (gameMode === 'local') {
+        soundVictory();
+    } else if (gameMode === 'online') {
+        var weWon =
+            (message.indexOf('White wins') !== -1 && playerColor === WHITE) ||
+            (message.indexOf('Black wins') !== -1 && playerColor === BLACK);
+        if (weWon) soundVictory();
+        else soundDefeat();
+    }
+
+    updateClockDisplay();
 }
 
 // ============================================================
@@ -1178,11 +1421,9 @@ function showGameOver(message) {
 // ============================================================
 
 function cleanupOldGames() {
-    const cutoff = Date.now() - (24 * 60 * 60 * 1000);
-    db.ref('games').orderByChild('createdAt').endAt(cutoff).once('value', (snapshot) => {
-        snapshot.forEach((child) => {
-            child.ref.remove();
-        });
+    var cutoff = Date.now() - (24 * 60 * 60 * 1000);
+    db.ref('games').orderByChild('createdAt').endAt(cutoff).once('value', function(snapshot) {
+        snapshot.forEach(function(child) { child.ref.remove(); });
     });
 }
 
@@ -1192,3 +1433,11 @@ function cleanupOldGames() {
 
 showLobby();
 cleanupOldGames();
+
+function hasAnyLegalMoves(color) {
+    for (var r = 0; r < BOARD_SIZE; r++)
+        for (var c = 0; c < BOARD_SIZE; c++)
+            if (board[r][c] && board[r][c].color === color)
+                if (getValidMoves(r, c).length > 0) return true;
+    return false;
+}
