@@ -1,4 +1,4 @@
-# ♔ Grand Musketeer Chess ♚
+# ♔ Santa Chess 100 ♚
 
 A 10×10 chess variant featuring the Musketeer piece — playable online with real-time multiplayer!
 
