@@ -57,20 +57,22 @@ function playNoise(dur, vol) {
     } catch(e) {}
 }
 
-function soundMove()    { playNoise(0.08,0.2); playTone(200,0.08,'sine',0.15); }
-function soundCapture() { playNoise(0.1,0.35); playTone(300,0.06,'square',0.15); setTimeout(function(){playTone(250,0.06,'square',0.1);},30); }
-function soundCheck()   { playTone(880,0.12,'sine',0.25); setTimeout(function(){playTone(880,0.12,'sine',0.25);},150); }
+function soundMove()     { playNoise(0.08,0.2); playTone(200,0.08,'sine',0.15); }
+function soundCapture()  { playNoise(0.1,0.35); playTone(300,0.06,'square',0.15); setTimeout(function(){playTone(250,0.06,'square',0.1);},30); }
+function soundCheck()    { playTone(880,0.12,'sine',0.25); setTimeout(function(){playTone(880,0.12,'sine',0.25);},150); }
 function soundCheckmate(){ playTone(523,0.4,'sine',0.3); setTimeout(function(){playTone(659,0.4,'sine',0.25);},100); setTimeout(function(){playTone(784,0.4,'sine',0.25);},200); setTimeout(function(){playTone(1047,0.6,'sine',0.3);},300); }
-function soundCastle()  { soundMove(); setTimeout(function(){soundMove();},150); }
+function soundCastle()   { soundMove(); setTimeout(function(){soundMove();},150); }
 function soundPromotion(){ playTone(400,0.12,'sine',0.2); setTimeout(function(){playTone(500,0.12,'sine',0.2);},80); setTimeout(function(){playTone(630,0.12,'sine',0.2);},160); setTimeout(function(){playTone(800,0.2,'sine',0.25);},240); }
 function soundGameStart(){ playTone(523,0.3,'sine',0.15); setTimeout(function(){playTone(659,0.3,'sine',0.15);},120); setTimeout(function(){playTone(784,0.4,'sine',0.2);},240); }
-function soundError()   { playTone(100,0.2,'sawtooth',0.15); }
-function soundNotify()  { playTone(1200,0.15,'sine',0.2); setTimeout(function(){playTone(1600,0.2,'sine',0.15);},100); }
-function soundVictory() { playTone(523,0.2,'sine',0.2); setTimeout(function(){playTone(659,0.2,'sine',0.2);},150); setTimeout(function(){playTone(784,0.2,'sine',0.2);},300); setTimeout(function(){playTone(1047,0.4,'sine',0.3);},450); setTimeout(function(){playTone(1047,0.5,'sine',0.2);playTone(1319,0.5,'sine',0.2);playTone(1568,0.5,'sine',0.2);},650); }
-function soundDefeat()  { playTone(400,0.3,'sine',0.2); setTimeout(function(){playTone(350,0.3,'sine',0.2);},200); setTimeout(function(){playTone(300,0.3,'sine',0.2);},400); setTimeout(function(){playTone(200,0.5,'sine',0.15);},600); }
-function soundDraw()    { playTone(500,0.25,'sine',0.2); setTimeout(function(){playTone(500,0.25,'sine',0.2);},300); }
-function soundLowTime() { playTone(600,0.08,'sine',0.2); }
-function soundFlag()    { playTone(200,0.5,'square',0.25); setTimeout(function(){playTone(150,0.5,'square',0.2);},200); }
+function soundError()    { playTone(100,0.2,'sawtooth',0.15); }
+function soundNotify()   { playTone(1200,0.15,'sine',0.2); setTimeout(function(){playTone(1600,0.2,'sine',0.15);},100); }
+function soundVictory()  { playTone(523,0.2,'sine',0.2); setTimeout(function(){playTone(659,0.2,'sine',0.2);},150); setTimeout(function(){playTone(784,0.2,'sine',0.2);},300); setTimeout(function(){playTone(1047,0.4,'sine',0.3);},450); setTimeout(function(){playTone(1047,0.5,'sine',0.2);playTone(1319,0.5,'sine',0.2);playTone(1568,0.5,'sine',0.2);},650); }
+function soundDefeat()   { playTone(400,0.3,'sine',0.2); setTimeout(function(){playTone(350,0.3,'sine',0.2);},200); setTimeout(function(){playTone(300,0.3,'sine',0.2);},400); setTimeout(function(){playTone(200,0.5,'sine',0.15);},600); }
+function soundDraw()     { playTone(500,0.25,'sine',0.2); setTimeout(function(){playTone(500,0.25,'sine',0.2);},300); }
+function soundLowTime()  { playTone(600,0.08,'sine',0.2); }
+function soundFlag()     { playTone(200,0.5,'square',0.25); setTimeout(function(){playTone(150,0.5,'square',0.2);},200); }
+function soundDisconnect(){ playTone(400,0.15,'sine',0.2); setTimeout(function(){playTone(300,0.2,'sine',0.2);},120); }
+function soundReconnect(){ playTone(400,0.12,'sine',0.2); setTimeout(function(){playTone(600,0.15,'sine',0.2);},100); }
 
 function toggleSound() {
     soundEnabled = !soundEnabled;
@@ -79,7 +81,7 @@ function toggleSound() {
 }
 
 // ============================================================
-// PIECE IMAGES & CONSTANTS
+// CONSTANTS
 // ============================================================
 
 var PIECE_SET = 'pieces/cburnett';
@@ -94,10 +96,6 @@ var EMPTY = null;
 var KING='K', QUEEN='Q', ROOK='R', BISHOP='B', KNIGHT='N', MUSKETEER='M', PAWN='P';
 var WHITE='white', BLACK='black';
 
-// ============================================================
-// TIME CONTROLS
-// ============================================================
-
 var TIME_CONTROLS = {
     'none':  { initial: 0, increment: 0, label: 'No Timer' },
     '1+0':   { initial: 60, increment: 0, label: '1+0 Bullet' },
@@ -111,6 +109,8 @@ var TIME_CONTROLS = {
     '10+5':  { initial: 600, increment: 5, label: '10+5 Rapid' },
     '15+10': { initial: 900, increment: 10, label: '15+10 Rapid' }
 };
+
+var DISCONNECT_TIMEOUT = 10; // seconds
 
 // ============================================================
 // GAME STATE
@@ -128,23 +128,17 @@ var rookMoved = { white: { a: false, j: false }, black: { a: false, j: false } }
 var enPassantTarget = null;
 var pendingPromotion = null;
 
-// ============================================================
-// TIMER STATE
-// ============================================================
-
+// Timer state
 var timeControl = 'none';
-var timerWhite = 0;          // milliseconds remaining
+var timerWhite = 0;
 var timerBlack = 0;
-var timerIncrement = 0;      // seconds per move
-var timerInterval = null;    // setInterval handle
-var lastTickTime = 0;        // for accurate timing
-var timerStarted = false;    // timer starts after first move
+var timerIncrement = 0;
+var timerInterval = null;
+var lastTickTime = 0;
+var timerStarted = false;
 var lowTimeWarned = { white: false, black: false };
 
-// ============================================================
-// MULTIPLAYER STATE
-// ============================================================
-
+// Multiplayer state
 var gameMode = 'local';
 var roomCode = null;
 var playerColor = null;
@@ -156,12 +150,17 @@ var lastSyncedMove = -1;
 var isSyncing = false;
 var gameOver = false;
 
-function generatePlayerId() {
-    return 'player_' + Math.random().toString(36).substr(2, 9);
-}
+// Disconnect state
+var opponentOnline = true;
+var disconnectTimer = null;
+var disconnectCountdown = DISCONNECT_TIMEOUT;
+var disconnectInterval = null;
+var presenceRef = null;
+var opponentPresenceRef = null;
+
+function generatePlayerId() { return 'player_' + Math.random().toString(36).substr(2, 9); }
 function generateRoomCode() {
-    var chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-    var code = '';
+    var chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789', code = '';
     for (var i = 0; i < 6; i++) code += chars[Math.floor(Math.random() * chars.length)];
     return code;
 }
@@ -174,13 +173,8 @@ function initTimers(tc) {
     timeControl = tc;
     var config = TIME_CONTROLS[tc];
     if (!config || tc === 'none') {
-        timeControl = 'none';
-        timerWhite = 0;
-        timerBlack = 0;
-        timerIncrement = 0;
-        timerStarted = false;
-        lowTimeWarned = { white: false, black: false };
-        return;
+        timeControl = 'none'; timerWhite = 0; timerBlack = 0; timerIncrement = 0;
+        timerStarted = false; lowTimeWarned = { white: false, black: false }; return;
     }
     timerWhite = config.initial * 1000;
     timerBlack = config.initial * 1000;
@@ -192,80 +186,48 @@ function initTimers(tc) {
 function startTimerTick() {
     if (timerInterval) clearInterval(timerInterval);
     if (timeControl === 'none') return;
-
     lastTickTime = Date.now();
     timerInterval = setInterval(function() {
-        if (gameOver || !timerStarted) return;
-        if (pendingPromotion) return;
-
-        var now = Date.now();
-        var elapsed = now - lastTickTime;
+        if (gameOver || !timerStarted || pendingPromotion) return;
+        var now = Date.now(), elapsed = now - lastTickTime;
         lastTickTime = now;
-
         if (currentTurn === WHITE) {
-            timerWhite -= elapsed;
-            if (timerWhite <= 0) {
-                timerWhite = 0;
-                onTimeOut(WHITE);
-                return;
-            }
+            timerWhite = Math.max(0, timerWhite - elapsed);
+            if (timerWhite <= 0) { timerWhite = 0; onTimeOut(WHITE); return; }
         } else {
-            timerBlack -= elapsed;
-            if (timerBlack <= 0) {
-                timerBlack = 0;
-                onTimeOut(BLACK);
-                return;
-            }
+            timerBlack = Math.max(0, timerBlack - elapsed);
+            if (timerBlack <= 0) { timerBlack = 0; onTimeOut(BLACK); return; }
         }
-
-        // Low time warning (under 30 seconds)
-        checkLowTime(WHITE);
-        checkLowTime(BLACK);
-
+        checkLowTime(WHITE); checkLowTime(BLACK);
         updateClockDisplay();
     }, 100);
 }
 
 function stopTimerTick() {
-    if (timerInterval) {
-        clearInterval(timerInterval);
-        timerInterval = null;
-    }
+    if (timerInterval) { clearInterval(timerInterval); timerInterval = null; }
 }
 
 function checkLowTime(color) {
     var time = color === WHITE ? timerWhite : timerBlack;
     if (time > 0 && time <= 30000 && !lowTimeWarned[color]) {
         lowTimeWarned[color] = true;
-        if (gameMode === 'local' || color === playerColor) {
-            soundLowTime();
-        }
+        if (gameMode === 'local' || color === playerColor) soundLowTime();
     }
 }
 
 function onTimeOut(color) {
-    stopTimerTick();
-    gameOver = true;
+    stopTimerTick(); gameOver = true;
     var winner = color === WHITE ? 'Black' : 'White';
     var message = winner + ' wins on time!';
-
-    soundFlag();
-    updateClockDisplay();
-
-    if (gameMode === 'online') {
-        syncGameOverToFirebase(message);
-    }
-
+    soundFlag(); updateClockDisplay();
+    if (gameMode === 'online') syncGameOverToFirebase(message);
     setTimeout(function() { showGameOver(message); }, 300);
 }
 
 function addIncrement(color) {
     if (timeControl === 'none' || timerIncrement === 0) return;
-    if (color === WHITE) {
-        timerWhite += timerIncrement;
-    } else {
-        timerBlack += timerIncrement;
-    }
+    if (color === WHITE) timerWhite += timerIncrement;
+    else timerBlack += timerIncrement;
 }
 
 function formatTime(ms) {
@@ -273,67 +235,44 @@ function formatTime(ms) {
     var totalSeconds = Math.ceil(ms / 1000);
     var minutes = Math.floor(totalSeconds / 60);
     var seconds = totalSeconds % 60;
-
     if (ms <= 10000) {
-        // Under 10 seconds: show tenths
         var tenths = Math.floor((ms % 1000) / 100);
         return seconds + '.' + tenths;
     }
-
     return minutes + ':' + (seconds < 10 ? '0' : '') + seconds;
 }
 
 function updateClockDisplay() {
     var flipped = (gameMode === 'online' && playerColor === BLACK);
-
-    var topColor, bottomColor;
-    if (flipped) {
-        topColor = WHITE;
-        bottomColor = BLACK;
-    } else {
-        topColor = BLACK;
-        bottomColor = WHITE;
-    }
+    var topColor = flipped ? WHITE : BLACK;
+    var bottomColor = flipped ? BLACK : WHITE;
 
     var clockTop = document.getElementById('clock-top');
     var clockBottom = document.getElementById('clock-bottom');
-    var topTime = document.getElementById('clock-top-time');
-    var bottomTime = document.getElementById('clock-bottom-time');
-    var topLabel = document.getElementById('clock-top-label');
-    var bottomLabel = document.getElementById('clock-bottom-label');
 
     if (timeControl === 'none') {
-        clockTop.classList.add('hidden');
-        clockBottom.classList.add('hidden');
-        return;
+        clockTop.classList.add('hidden'); clockBottom.classList.add('hidden'); return;
     }
-
-    clockTop.classList.remove('hidden');
-    clockBottom.classList.remove('hidden');
+    clockTop.classList.remove('hidden'); clockBottom.classList.remove('hidden');
 
     var topMs = topColor === WHITE ? timerWhite : timerBlack;
     var bottomMs = bottomColor === WHITE ? timerWhite : timerBlack;
 
-    topTime.textContent = formatTime(topMs);
-    bottomTime.textContent = formatTime(bottomMs);
+    document.getElementById('clock-top-time').textContent = formatTime(topMs);
+    document.getElementById('clock-bottom-time').textContent = formatTime(bottomMs);
 
     if (gameMode === 'online') {
-        topLabel.textContent = topColor === playerColor ? 'You (' + topColor + ')' : 'Opponent (' + topColor + ')';
-        bottomLabel.textContent = bottomColor === playerColor ? 'You (' + bottomColor + ')' : 'Opponent (' + bottomColor + ')';
+        document.getElementById('clock-top-label').textContent = topColor === playerColor ? 'You' : 'Opponent';
+        document.getElementById('clock-bottom-label').textContent = bottomColor === playerColor ? 'You' : 'Opponent';
     } else {
-        topLabel.textContent = topColor === WHITE ? '⬜ White' : '⬛ Black';
-        bottomLabel.textContent = bottomColor === WHITE ? '⬜ White' : '⬛ Black';
+        document.getElementById('clock-top-label').textContent = topColor === WHITE ? '⬜ White' : '⬛ Black';
+        document.getElementById('clock-bottom-label').textContent = bottomColor === WHITE ? '⬜ White' : '⬛ Black';
     }
 
-    // Active state
     clockTop.classList.toggle('active', timerStarted && currentTurn === topColor && !gameOver);
     clockBottom.classList.toggle('active', timerStarted && currentTurn === bottomColor && !gameOver);
-
-    // Low time state
     clockTop.classList.toggle('low-time', topMs > 0 && topMs <= 30000 && timerStarted && currentTurn === topColor);
     clockBottom.classList.toggle('low-time', bottomMs > 0 && bottomMs <= 30000 && timerStarted && currentTurn === bottomColor);
-
-    // Flagged state
     clockTop.classList.toggle('flagged', topMs <= 0);
     clockBottom.classList.toggle('flagged', bottomMs <= 0);
 }
@@ -360,21 +299,15 @@ function createStartingBoard() {
 
 function initGameState() {
     board = createStartingBoard();
-    currentTurn = WHITE;
-    selectedSquare = null;
-    validMoves = [];
-    moveHistory = [];
-    stateHistory = [];
-    lastMove = null;
+    currentTurn = WHITE; selectedSquare = null; validMoves = [];
+    moveHistory = []; stateHistory = []; lastMove = null;
     kingMoved = { white: false, black: false };
     rookMoved = { white: { a: false, j: false }, black: { a: false, j: false } };
-    enPassantTarget = null;
-    pendingPromotion = null;
-    moveCounter = 0;
-    lastSyncedMove = -1;
-    isSyncing = false;
-    gameOver = false;
+    enPassantTarget = null; pendingPromotion = null;
+    moveCounter = 0; lastSyncedMove = -1; isSyncing = false; gameOver = false;
+    opponentOnline = true;
     stopTimerTick();
+    clearDisconnectTimer();
 }
 
 // ============================================================
@@ -383,15 +316,11 @@ function initGameState() {
 
 function serializeBoard(b) {
     var s = [];
-    for (var r = 0; r < BOARD_SIZE; r++)
-		    {
+    for (var r = 0; r < BOARD_SIZE; r++) {
         s[r] = [];
         for (var c = 0; c < BOARD_SIZE; c++) {
-            if (b[r][c] === EMPTY) {
-                s[r][c] = 0;
-            } else {
-                s[r][c] = { t: b[r][c].type, c: b[r][c].color === WHITE ? 'w' : 'b', m: b[r][c].hasMoved || false };
-            }
+            if (b[r][c] === EMPTY) s[r][c] = 0;
+            else s[r][c] = { t: b[r][c].type, c: b[r][c].color === WHITE ? 'w' : 'b', m: b[r][c].hasMoved || false };
         }
     }
     return s;
@@ -402,11 +331,8 @@ function deserializeBoard(s) {
     for (var r = 0; r < BOARD_SIZE; r++) {
         b[r] = [];
         for (var c = 0; c < BOARD_SIZE; c++) {
-            if (!s[r][c] || s[r][c] === 0) {
-                b[r][c] = EMPTY;
-            } else {
-                b[r][c] = { type: s[r][c].t, color: s[r][c].c === 'w' ? WHITE : BLACK, hasMoved: s[r][c].m || false };
-            }
+            if (!s[r][c] || s[r][c] === 0) b[r][c] = EMPTY;
+            else b[r][c] = { type: s[r][c].t, color: s[r][c].c === 'w' ? WHITE : BLACK, hasMoved: s[r][c].m || false };
         }
     }
     return b;
@@ -415,46 +341,35 @@ function deserializeBoard(s) {
 function serializeGameState() {
     return {
         board: serializeBoard(board),
-        currentTurn: currentTurn,
-        kingMoved: kingMoved,
-        rookMoved: rookMoved,
-        enPassantTarget: enPassantTarget || null,
-        lastMove: lastMove || null,
-        moveHistory: moveHistory || [],
-        moveCounter: moveCounter,
-        lastMoveBy: playerColor,
-        gameOverMessage: null,
-        timerWhite: timerWhite,
-        timerBlack: timerBlack,
-        timerLastUpdate: Date.now()
+        currentTurn: currentTurn, kingMoved: kingMoved, rookMoved: rookMoved,
+        enPassantTarget: enPassantTarget || null, lastMove: lastMove || null,
+        moveHistory: moveHistory || [], moveCounter: moveCounter,
+        lastMoveBy: playerColor, gameOverMessage: null,
+        timerWhite: timerWhite, timerBlack: timerBlack,
+        timerTimestamp: Date.now(), timerStarted: timerStarted
     };
 }
 
 function applyGameState(data) {
     board = deserializeBoard(data.board);
-    currentTurn = data.currentTurn;
-    kingMoved = data.kingMoved;
-    rookMoved = data.rookMoved;
-    enPassantTarget = data.enPassantTarget || null;
-    lastMove = data.lastMove || null;
-    moveHistory = data.moveHistory || [];
-    moveCounter = data.moveCounter || 0;
-    selectedSquare = null;
-    validMoves = [];
-    pendingPromotion = null;
+    currentTurn = data.currentTurn; kingMoved = data.kingMoved; rookMoved = data.rookMoved;
+    enPassantTarget = data.enPassantTarget || null; lastMove = data.lastMove || null;
+    moveHistory = data.moveHistory || []; moveCounter = data.moveCounter || 0;
+    selectedSquare = null; validMoves = []; pendingPromotion = null;
 
-    // Sync timer values from Firebase
-    if (data.timerWhite !== undefined) {
-        var serverDelay = Date.now() - (data.timerLastUpdate || Date.now());
-        timerWhite = data.timerWhite;
-        timerBlack = data.timerBlack;
-        // Subtract time elapsed since the move was made (compensate for network delay)
-        if (timerStarted && serverDelay > 0 && serverDelay < 5000) {
-            if (currentTurn === WHITE) timerWhite -= serverDelay;
-            else timerBlack -= serverDelay;
+    if (timeControl !== 'none' && data.timerWhite !== undefined) {
+        var elapsed = 0;
+        if (data.timerTimestamp) {
+            elapsed = Date.now() - data.timerTimestamp;
+            if (elapsed < 0 || elapsed > 10000) elapsed = 0;
         }
-        if (timerWhite < 0) timerWhite = 0;
-        if (timerBlack < 0) timerBlack = 0;
+        timerWhite = data.timerWhite; timerBlack = data.timerBlack;
+        if (data.timerStarted) {
+            if (currentTurn === WHITE) timerWhite = Math.max(0, timerWhite - elapsed);
+            else timerBlack = Math.max(0, timerBlack - elapsed);
+        }
+        timerStarted = data.timerStarted || false;
+        lastTickTime = Date.now();
     }
 }
 
@@ -533,6 +448,131 @@ function updateMoveHistory() {
 }
 
 // ============================================================
+// DISCONNECT DETECTION
+// ============================================================
+
+function setupPresence() {
+    if (gameMode !== 'online' || !gameRef) return;
+
+    // My presence node
+    var myKey = playerColor === WHITE ? 'whiteOnline' : 'blackOnline';
+    var opponentKey = playerColor === WHITE ? 'blackOnline' : 'whiteOnline';
+
+    presenceRef = gameRef.child(myKey);
+
+    // When I disconnect, set my presence to false
+    presenceRef.onDisconnect().set(false);
+    // Set myself as online
+    presenceRef.set(true);
+
+    // Also re-set presence when reconnecting
+    db.ref('.info/connected').on('value', function(snap) {
+        if (snap.val() === true) {
+            presenceRef.onDisconnect().set(false);
+            presenceRef.set(true);
+        }
+        updateConnectionStatus(snap.val() === true);
+    });
+
+    // Watch opponent's presence
+    opponentPresenceRef = gameRef.child(opponentKey);
+    opponentPresenceRef.on('value', function(snap) {
+        var online = snap.val();
+
+        if (online === true) {
+            if (!opponentOnline) {
+                // Opponent reconnected!
+                opponentOnline = true;
+                clearDisconnectTimer();
+                showReconnected();
+                soundReconnect();
+            }
+            opponentOnline = true;
+        } else if (online === false) {
+            if (opponentOnline && !gameOver) {
+                // Opponent just disconnected
+                opponentOnline = false;
+                soundDisconnect();
+                startDisconnectCountdown();
+            }
+        }
+    });
+}
+
+function cleanupPresence() {
+    if (presenceRef) {
+        presenceRef.onDisconnect().cancel();
+        presenceRef.set(false);
+        presenceRef = null;
+    }
+    if (opponentPresenceRef) {
+        opponentPresenceRef.off();
+        opponentPresenceRef = null;
+    }
+    clearDisconnectTimer();
+}
+
+function startDisconnectCountdown() {
+    clearDisconnectTimer();
+    disconnectCountdown = DISCONNECT_TIMEOUT;
+
+    var banner = document.getElementById('disconnect-banner');
+    banner.classList.remove('hidden', 'reconnected');
+    document.getElementById('disconnect-text').textContent = 'Opponent disconnected —';
+    document.getElementById('disconnect-countdown').textContent = disconnectCountdown + 's';
+
+    disconnectInterval = setInterval(function() {
+        disconnectCountdown--;
+        document.getElementById('disconnect-countdown').textContent = disconnectCountdown + 's';
+
+        if (disconnectCountdown <= 0) {
+            clearDisconnectTimer();
+            onOpponentAbandoned();
+        }
+    }, 1000);
+}
+
+function clearDisconnectTimer() {
+    if (disconnectInterval) {
+        clearInterval(disconnectInterval);
+        disconnectInterval = null;
+    }
+    disconnectCountdown = DISCONNECT_TIMEOUT;
+}
+
+function showReconnected() {
+    var banner = document.getElementById('disconnect-banner');
+    banner.classList.remove('hidden');
+    banner.classList.add('reconnected');
+    document.getElementById('disconnect-text').textContent = 'Opponent reconnected!';
+    document.getElementById('disconnect-countdown').textContent = '✓';
+
+    setTimeout(function() {
+        banner.classList.add('hidden');
+        banner.classList.remove('reconnected');
+    }, 3000);
+}
+
+function hideDisconnectBanner() {
+    var banner = document.getElementById('disconnect-banner');
+    banner.classList.add('hidden');
+    banner.classList.remove('reconnected');
+}
+
+function onOpponentAbandoned() {
+    if (gameOver) return;
+    gameOver = true;
+    stopTimerTick();
+    hideDisconnectBanner();
+
+    var winner = playerColor === WHITE ? 'White' : 'Black';
+    var message = winner + ' wins — opponent abandoned the game!';
+
+    syncGameOverToFirebase(message);
+    setTimeout(function() { showGameOver(message); }, 300);
+}
+
+// ============================================================
 // LOBBY & MULTIPLAYER
 // ============================================================
 
@@ -543,6 +583,8 @@ function showLobby() {
     document.getElementById('game-over-modal').classList.remove('active');
     document.getElementById('draw-modal').classList.remove('active');
     document.getElementById('lobby-status').textContent = '';
+    hideDisconnectBanner();
+    cleanupPresence();
     if (gameRef) { gameRef.off(); gameRef = null; }
     gameListener = null;
     stopTimerTick();
@@ -558,27 +600,21 @@ function getSelectedTimeControl() {
 }
 
 function startLocalGame() {
-    gameMode = 'local';
-    playerColor = null;
-    roomCode = null;
+    gameMode = 'local'; playerColor = null; roomCode = null;
     var tc = getSelectedTimeControl();
-    initGameState();
-    initTimers(tc);
+    initGameState(); initTimers(tc);
     showGameScreen();
     document.getElementById('player-color-label').textContent = 'Local Game';
     document.getElementById('room-code-small').textContent = '';
     document.getElementById('connection-status').textContent = '';
-    renderBoard();
-    updateTurnIndicator();
-    updateMoveHistory();
-    updateClockDisplay();
+    hideDisconnectBanner();
+    renderBoard(); updateTurnIndicator(); updateMoveHistory(); updateClockDisplay();
     soundGameStart();
 }
 
 function createGame() {
     roomCode = generateRoomCode();
-    gameMode = 'online';
-    playerColor = WHITE;
+    gameMode = 'online'; playerColor = WHITE;
     var tc = getSelectedTimeControl();
 
     document.getElementById('waiting-area').classList.remove('hidden');
@@ -590,17 +626,13 @@ function createGame() {
         'Time control: ' + (tcConfig ? tcConfig.label : 'No Timer');
 
     gameRef = db.ref('games/' + roomCode);
-    initGameState();
-    initTimers(tc);
+    initGameState(); initTimers(tc);
 
     var gameData = {
-        status: 'waiting',
-        white: playerId,
-        black: null,
-        timeControl: tc,
-        gameState: serializeGameState(),
-        drawOffer: null,
-        resign: null,
+        status: 'waiting', white: playerId, black: null,
+        timeControl: tc, gameState: serializeGameState(),
+        drawOffer: null, resign: null,
+        whiteOnline: true, blackOnline: false,
         createdAt: firebase.database.ServerValue.TIMESTAMP
     };
 
@@ -629,27 +661,16 @@ function joinGame() {
         return;
     }
 
-    roomCode = code;
-    gameMode = 'online';
-    playerColor = BLACK;
+    roomCode = code; gameMode = 'online'; playerColor = BLACK;
     gameRef = db.ref('games/' + roomCode);
 
     gameRef.once('value').then(function(snapshot) {
         var data = snapshot.val();
-        if (!data) {
-            document.getElementById('lobby-status').textContent = 'Game not found.';
-            return;
-        }
-        if (data.status !== 'waiting') {
-            document.getElementById('lobby-status').textContent = 'Game already started or finished.';
-            return;
-        }
+        if (!data) { document.getElementById('lobby-status').textContent = 'Game not found.'; return; }
+        if (data.status !== 'waiting') { document.getElementById('lobby-status').textContent = 'Game already started or finished.'; return; }
 
-        // Use the time control set by the game creator
         var tc = data.timeControl || 'none';
-        initGameState();
-        initTimers(tc);
-
+        initGameState(); initTimers(tc);
         if (data.gameState) {
             applyGameState(data.gameState);
             lastSyncedMove = data.gameState.moveCounter || 0;
@@ -671,16 +692,13 @@ function startOnlineGame() {
         'You are: ' + (playerColor === WHITE ? '⬜ White' : '⬛ Black');
     document.getElementById('room-code-small').textContent = 'Room: ' + roomCode;
     updateConnectionStatus(true);
+    hideDisconnectBanner();
 
-    renderBoard();
-    updateTurnIndicator();
-    updateMoveHistory();
-    updateClockDisplay();
+    renderBoard(); updateTurnIndicator(); updateMoveHistory(); updateClockDisplay();
     listenForGameUpdates();
-    soundGameStart();
-
-    // Start ticking (timer only counts when moves begin)
+    setupPresence();
     startTimerTick();
+    soundGameStart();
 }
 
 function listenForGameUpdates() {
@@ -693,16 +711,13 @@ function listenForGameUpdates() {
 
         if (data.resign) {
             var winner = data.resign === WHITE ? BLACK : WHITE;
-            gameOver = true;
-            stopTimerTick();
+            gameOver = true; stopTimerTick();
             showGameOver((winner === WHITE ? 'White' : 'Black') + ' wins — opponent resigned!');
             return;
         }
 
         if (data.status === 'draw') {
-            gameOver = true;
-            stopTimerTick();
-            soundDraw();
+            gameOver = true; stopTimerTick(); soundDraw();
             showGameOver('Game drawn by agreement!');
             return;
         }
@@ -713,13 +728,9 @@ function listenForGameUpdates() {
         }
 
         if (data.gameState && data.gameState.gameOverMessage) {
-            gameOver = true;
-            stopTimerTick();
+            gameOver = true; stopTimerTick();
             applyGameState(data.gameState);
-            renderBoard();
-            updateTurnIndicator();
-            updateMoveHistory();
-            updateClockDisplay();
+            renderBoard(); updateTurnIndicator(); updateMoveHistory(); updateClockDisplay();
             showGameOver(data.gameState.gameOverMessage);
             return;
         }
@@ -731,24 +742,11 @@ function listenForGameUpdates() {
             if (remoteMoveCounter > lastSyncedMove && lastMoveBy !== playerColor) {
                 lastSyncedMove = remoteMoveCounter;
                 applyGameState(data.gameState);
-
-                // Start timer after first move
-                if (!timerStarted && timeControl !== 'none' && remoteMoveCounter >= 1) {
-                    timerStarted = true;
-                    lastTickTime = Date.now();
-                }
-
-                renderBoard();
-                updateTurnIndicator();
-                updateMoveHistory();
-                updateClockDisplay();
+                if (timerStarted && timeControl !== 'none' && !timerInterval) startTimerTick();
+                renderBoard(); updateTurnIndicator(); updateMoveHistory(); updateClockDisplay();
                 soundMove();
             }
         }
-    });
-
-    db.ref('.info/connected').on('value', function(snap) {
-        updateConnectionStatus(snap.val() === true);
     });
 }
 
@@ -758,11 +756,8 @@ function syncGameToFirebase() {
     var state = serializeGameState();
     gameRef.child('gameState').set(state).then(function() {
         lastSyncedMove = moveCounter;
-        isSyncing = false;
-    }).catch(function(err) {
-        console.error('Sync error:', err);
-        isSyncing = false;
-    });
+        setTimeout(function() { isSyncing = false; }, 200);
+    }).catch(function(err) { console.error('Sync error:', err); isSyncing = false; });
 }
 
 function syncGameOverToFirebase(message) {
@@ -772,23 +767,20 @@ function syncGameOverToFirebase(message) {
     state.gameOverMessage = message;
     gameRef.child('gameState').set(state).then(function() {
         lastSyncedMove = moveCounter;
-        isSyncing = false;
-    }).catch(function(err) {
-        console.error('Sync error:', err);
-        isSyncing = false;
-    });
+        setTimeout(function() { isSyncing = false; }, 200);
+    }).catch(function(err) { console.error('Sync error:', err); isSyncing = false; });
 }
 
 function cancelGame() {
+    cleanupPresence();
     if (gameRef) { gameRef.off(); gameRef.remove(); gameRef = null; }
-    stopTimerTick();
-    showLobby();
+    stopTimerTick(); showLobby();
 }
 
 function backToLobby() {
+    cleanupPresence();
     if (gameRef) { gameRef.off(); gameRef = null; }
-    gameListener = null;
-    stopTimerTick();
+    gameListener = null; stopTimerTick();
     document.getElementById('game-over-modal').classList.remove('active');
     showLobby();
 }
@@ -838,8 +830,7 @@ function resignGame() {
 // ============================================================
 
 function onSquareClick(r, c) {
-    if (pendingPromotion) return;
-    if (gameOver) return;
+    if (pendingPromotion || gameOver) return;
     if (gameMode === 'online' && currentTurn !== playerColor) return;
 
     var piece = board[r][c];
@@ -848,26 +839,19 @@ function onSquareClick(r, c) {
         var vm = validMoves.find(function(m) { return m.r === r && m.c === c; });
         if (vm) {
             executeMove(selectedSquare.r, selectedSquare.c, r, c, vm);
-            selectedSquare = null;
-            validMoves = [];
-            renderBoard();
-            return;
+            selectedSquare = null; validMoves = [];
+            renderBoard(); return;
         }
         if (piece && piece.color === currentTurn) {
-            selectedSquare = { r: r, c: c };
-            validMoves = getValidMoves(r, c);
-            renderBoard();
-            return;
+            selectedSquare = { r: r, c: c }; validMoves = getValidMoves(r, c);
+            renderBoard(); return;
         }
-        selectedSquare = null;
-        validMoves = [];
-        renderBoard();
-        return;
+        selectedSquare = null; validMoves = [];
+        renderBoard(); return;
     }
 
     if (piece && piece.color === currentTurn) {
-        selectedSquare = { r: r, c: c };
-        validMoves = getValidMoves(r, c);
+        selectedSquare = { r: r, c: c }; validMoves = getValidMoves(r, c);
         renderBoard();
     }
 }
@@ -936,7 +920,6 @@ function getPawnMoves(r, c, color) {
     var moves = [];
     var dir = color === WHITE ? -1 : 1;
     var startRow = color === WHITE ? 8 : 1;
-
     if (inBounds(r+dir, c) && board[r+dir][c] === EMPTY) {
         moves.push({ r: r+dir, c: c });
         if (r === startRow && board[r+2*dir][c] === EMPTY) {
@@ -1011,9 +994,9 @@ function findKing(color) {
 function isSquareAttacked(r, c, byColor) {
     var enemy = byColor === WHITE ? BLACK : WHITE;
     var pawnDir = enemy === WHITE ? -1 : 1;
-    var dcs = [-1, 1];
     for (var di = 0; di < 2; di++) {
-        var pr = r - pawnDir, pc = c + dcs[di];
+        var dc = di === 0 ? -1 : 1;
+        var pr = r - pawnDir, pc = c + dc;
         if (inBounds(pr, pc) && board[pr][pc] && board[pr][pc].type === PAWN && board[pr][pc].color === enemy) return true;
     }
     var knightOffsets = [[-2,-1],[-2,1],[-1,-2],[-1,2],[1,-2],[1,2],[2,-1],[2,1],[-3,-1],[-3,1],[-1,-3],[-1,3],[1,-3],[1,3],[3,-1],[3,1]];
@@ -1067,8 +1050,7 @@ function isInCheck(color) {
 function wouldBeInCheck(fromR, fromC, toR, toC, color, moveInfo) {
     var savedBoard = JSON.parse(JSON.stringify(board));
     var savedEP = enPassantTarget ? JSON.parse(JSON.stringify(enPassantTarget)) : null;
-    board[toR][toC] = board[fromR][fromC];
-    board[fromR][fromC] = EMPTY;
+    board[toR][toC] = board[fromR][fromC]; board[fromR][fromC] = EMPTY;
     if (moveInfo && moveInfo.enPassant) board[moveInfo.captureR][moveInfo.captureC] = EMPTY;
     if (moveInfo && moveInfo.castling) {
         var row = fromR;
@@ -1081,9 +1063,16 @@ function wouldBeInCheck(fromR, fromC, toR, toC, color, moveInfo) {
         }
     }
     var inCheck = isInCheck(color);
-    board = savedBoard;
-    enPassantTarget = savedEP;
+    board = savedBoard; enPassantTarget = savedEP;
     return inCheck;
+}
+
+function hasAnyLegalMoves(color) {
+    for (var r = 0; r < BOARD_SIZE; r++)
+        for (var c = 0; c < BOARD_SIZE; c++)
+            if (board[r][c] && board[r][c].color === color)
+                if (getValidMoves(r, c).length > 0) return true;
+    return false;
 }
 
 // ============================================================
@@ -1102,9 +1091,7 @@ function executeMove(fromR, fromC, toR, toC, moveInfo) {
             enPassantTarget: enPassantTarget ? JSON.parse(JSON.stringify(enPassantTarget)) : null,
             lastMove: lastMove ? JSON.parse(JSON.stringify(lastMove)) : null,
             moveHistoryLength: moveHistory.length,
-            timerWhite: timerWhite,
-            timerBlack: timerBlack,
-            timerStarted: timerStarted
+            timerWhite: timerWhite, timerBlack: timerBlack, timerStarted: timerStarted
         });
     }
 
@@ -1125,8 +1112,7 @@ function executeMove(fromR, fromC, toR, toC, moveInfo) {
         }
     }
 
-    board[toR][toC] = piece;
-    board[fromR][fromC] = EMPTY;
+    board[toR][toC] = piece; board[fromR][fromC] = EMPTY;
 
     if (piece.type === KING) kingMoved[piece.color] = true;
     if (piece.type === ROOK) {
@@ -1157,22 +1143,23 @@ function executeMove(fromR, fromC, toR, toC, moveInfo) {
     lastMove = { from: { r: fromR, c: fromC }, to: { r: toR, c: toC } };
     moveCounter++;
 
-    // Play sound
+    // Sound
     if (moveInfo && moveInfo.castling) soundCastle();
     else if (captured || (moveInfo && moveInfo.enPassant)) soundCapture();
     else soundMove();
 
-    // Start timer after White's first move
-    if (!timerStarted && timeControl !== 'none') {
-        timerStarted = true;
+    // Timer
+    if (timeControl !== 'none') {
+        if (!timerStarted) {
+            timerStarted = true;
+            lastTickTime = Date.now();
+            if (gameMode === 'local') startTimerTick();
+        }
+        addIncrement(currentTurn);
         lastTickTime = Date.now();
-        if (gameMode === 'local') startTimerTick();
     }
 
-    // Add increment to the player who just moved
-    addIncrement(currentTurn);
-
-    // Check for promotion
+    // Promotion check
     var promoRow = piece.color === WHITE ? 0 : 9;
     if (piece.type === PAWN && toR === promoRow) {
         pendingPromotion = { r: toR, c: toC, color: piece.color, notation: notation };
@@ -1195,50 +1182,31 @@ function finalizeMove(notation) {
             notation += '#';
             moveHistory.push(notation);
             currentTurn = opponent;
-            gameOver = true;
-            stopTimerTick();
-
+            gameOver = true; stopTimerTick();
             var message = mover === WHITE ? 'White wins by checkmate!' : 'Black wins by checkmate!';
             soundCheckmate();
-
             if (gameMode === 'online') syncGameOverToFirebase(message);
-
-            updateMoveHistory();
-            renderBoard();
-            updateTurnIndicator();
-            updateClockDisplay();
+            updateMoveHistory(); renderBoard(); updateTurnIndicator(); updateClockDisplay();
             setTimeout(function() { showGameOver(message); }, 500);
             return;
         }
     } else if (!hasAnyLegalMoves(opponent)) {
         moveHistory.push(notation);
         currentTurn = opponent;
-        gameOver = true;
-        stopTimerTick();
-
+        gameOver = true; stopTimerTick();
         var message = 'Stalemate — Draw!';
         soundDraw();
-
         if (gameMode === 'online') syncGameOverToFirebase(message);
-
-        updateMoveHistory();
-        renderBoard();
-        updateTurnIndicator();
-        updateClockDisplay();
+        updateMoveHistory(); renderBoard(); updateTurnIndicator(); updateClockDisplay();
         setTimeout(function() { showGameOver(message); }, 500);
         return;
     }
 
     moveHistory.push(notation);
     currentTurn = opponent;
-
     if (gameMode === 'online' && gameRef) gameRef.child('drawOffer').set(null);
-
     syncGameToFirebase();
-    updateMoveHistory();
-    renderBoard();
-    updateTurnIndicator();
-    updateClockDisplay();
+    updateMoveHistory(); renderBoard(); updateTurnIndicator(); updateClockDisplay();
 }
 
 // ============================================================
@@ -1333,10 +1301,8 @@ function showPromotionModal(color) {
 
 function completePromotion(type) {
     document.getElementById('promotion-modal').classList.remove('active');
-    var r = pendingPromotion.r;
-    var c = pendingPromotion.c;
-    var color = pendingPromotion.color;
-    var notation = pendingPromotion.notation;
+    var r = pendingPromotion.r, c = pendingPromotion.c;
+    var color = pendingPromotion.color, notation = pendingPromotion.notation;
     board[r][c] = { type: type, color: color };
     var fullNotation = notation + '=' + type;
     pendingPromotion = null;
@@ -1349,13 +1315,8 @@ function completePromotion(type) {
 // ============================================================
 
 function undoMove() {
-    if (gameMode === 'online') {
-        soundError();
-        alert('Undo is not available in online games.');
-        return;
-    }
-    if (gameOver) return;
-    if (stateHistory.length === 0) return;
+    if (gameMode === 'online') { soundError(); alert('Undo is not available in online games.'); return; }
+    if (gameOver || stateHistory.length === 0) return;
 
     if (pendingPromotion) {
         document.getElementById('promotion-modal').classList.remove('active');
@@ -1363,30 +1324,19 @@ function undoMove() {
     }
 
     var prev = stateHistory.pop();
-    board = prev.board;
-    currentTurn = prev.currentTurn;
-    kingMoved = prev.kingMoved;
-    rookMoved = prev.rookMoved;
-    enPassantTarget = prev.enPassantTarget;
-    lastMove = prev.lastMove;
+    board = prev.board; currentTurn = prev.currentTurn;
+    kingMoved = prev.kingMoved; rookMoved = prev.rookMoved;
+    enPassantTarget = prev.enPassantTarget; lastMove = prev.lastMove;
     moveHistory.length = prev.moveHistoryLength;
 
-    // Restore timer state
     if (prev.timerWhite !== undefined) {
-        timerWhite = prev.timerWhite;
-        timerBlack = prev.timerBlack;
-        timerStarted = prev.timerStarted;
-        lastTickTime = Date.now();
+        timerWhite = prev.timerWhite; timerBlack = prev.timerBlack;
+        timerStarted = prev.timerStarted; lastTickTime = Date.now();
     }
 
-    selectedSquare = null;
-    validMoves = [];
-
+    selectedSquare = null; validMoves = [];
     soundMove();
-    renderBoard();
-    updateTurnIndicator();
-    updateMoveHistory();
-    updateClockDisplay();
+    renderBoard(); updateTurnIndicator(); updateMoveHistory(); updateClockDisplay();
 }
 
 // ============================================================
@@ -1394,15 +1344,14 @@ function undoMove() {
 // ============================================================
 
 function showGameOver(message) {
-    gameOver = true;
-    stopTimerTick();
+    gameOver = true; stopTimerTick();
     document.getElementById('game-over-text').textContent = message;
     document.getElementById('game-over-modal').classList.add('active');
 
     if (message.indexOf('Draw') !== -1 || message.indexOf('Stalemate') !== -1) {
-        // Draw sound already played
-    } else if (message.indexOf('time') !== -1) {
-        // Time sound already played
+        // already played
+    } else if (message.indexOf('time') !== -1 || message.indexOf('abandoned') !== -1) {
+        // already played
     } else if (gameMode === 'local') {
         soundVictory();
     } else if (gameMode === 'online') {
@@ -1412,12 +1361,11 @@ function showGameOver(message) {
         if (weWon) soundVictory();
         else soundDefeat();
     }
-
     updateClockDisplay();
 }
 
 // ============================================================
-// CLEANUP OLD GAMES
+// CLEANUP & INIT
 // ============================================================
 
 function cleanupOldGames() {
@@ -1427,17 +1375,12 @@ function cleanupOldGames() {
     });
 }
 
-// ============================================================
-// INIT
-// ============================================================
+// Handle page unload — ensure presence is cleaned up
+window.addEventListener('beforeunload', function() {
+    if (presenceRef) {
+        presenceRef.set(false);
+    }
+});
 
 showLobby();
 cleanupOldGames();
-
-function hasAnyLegalMoves(color) {
-    for (var r = 0; r < BOARD_SIZE; r++)
-        for (var c = 0; c < BOARD_SIZE; c++)
-            if (board[r][c] && board[r][c].color === color)
-                if (getValidMoves(r, c).length > 0) return true;
-    return false;
-}

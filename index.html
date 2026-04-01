@@ -74,7 +74,13 @@
         <span id="connection-status">●</span>
     </div>
 
-    <!-- Top clock (opponent in online, Black in local) -->
+    <!-- Disconnect banner -->
+    <div id="disconnect-banner" class="hidden">
+        <span id="disconnect-text">Opponent disconnected</span>
+        <span id="disconnect-countdown"></span>
+    </div>
+
+    <!-- Top clock -->
     <div id="clock-top" class="chess-clock">
         <span class="clock-player-label" id="clock-top-label">Black</span>
         <span class="clock-time" id="clock-top-time">10:00</span>
@@ -88,7 +94,7 @@
         <div id="file-labels"></div>
     </div>
 
-    <!-- Bottom clock (you in online, White in local) -->
+    <!-- Bottom clock -->
     <div id="clock-bottom" class="chess-clock">
         <span class="clock-player-label" id="clock-bottom-label">White</span>
         <span class="clock-time" id="clock-bottom-time">10:00</span>
@@ -103,7 +109,6 @@
         <button onclick="undoMove()">↩ Undo</button>
         <button onclick="offerDraw()">🤝 Draw</button>
         <button onclick="resignGame()">🏳 Resign</button>
-        <button onclick="backToLobby()">🚪 Leave</button>
         <button id="sound-toggle" onclick="toggleSound()">🔊 Sound</button>
     </div>
 </div>
