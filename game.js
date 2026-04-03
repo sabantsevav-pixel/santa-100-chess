@@ -232,13 +232,17 @@ function addIncrement(color) {
 
 function formatTime(ms) {
     if (ms <= 0) return '0:00';
-    var totalSeconds = Math.ceil(ms / 1000);
+
+    var totalSeconds = Math.floor(ms / 1000);
     var minutes = Math.floor(totalSeconds / 60);
     var seconds = totalSeconds % 60;
-    if (ms <= 10000) {
+
+    // Under 10 seconds: show tenths
+    if (totalSeconds < 10) {
         var tenths = Math.floor((ms % 1000) / 100);
         return seconds + '.' + tenths;
     }
+
     return minutes + ':' + (seconds < 10 ? '0' : '') + seconds;
 }
 
@@ -607,6 +611,7 @@ function startLocalGame() {
     document.getElementById('player-color-label').textContent = 'Local Game';
     document.getElementById('room-code-small').textContent = '';
     document.getElementById('connection-status').textContent = '';
+    document.getElementById('btn-undo').classList.remove('hidden');
     hideDisconnectBanner();
     renderBoard(); updateTurnIndicator(); updateMoveHistory(); updateClockDisplay();
     soundGameStart();
@@ -691,6 +696,7 @@ function startOnlineGame() {
     document.getElementById('player-color-label').textContent =
         'You are: ' + (playerColor === WHITE ? '⬜ White' : '⬛ Black');
     document.getElementById('room-code-small').textContent = 'Room: ' + roomCode;
+    document.getElementById('btn-undo').classList.add('hidden');
     updateConnectionStatus(true);
     hideDisconnectBanner();
 
@@ -896,7 +902,7 @@ function getMusketeerMoves(r, c, color) {
     var moves = [];
     var dirs = [[-1,-1],[-1,0],[-1,1],[0,-1],[0,1],[1,-1],[1,0],[1,1]];
     for (var i = 0; i < dirs.length; i++) {
-        for (var step = 1; step <= 2; step++) {
+        for (var step = 1; step <= 3; step++) {
             var nr = r + dirs[i][0]*step, nc = c + dirs[i][1]*step;
             if (!inBounds(nr, nc)) break;
             if (board[nr][nc] === EMPTY) { moves.push({ r: nr, c: nc }); }
@@ -1029,7 +1035,7 @@ function isSquareAttacked(r, c, byColor) {
     }
     var muskDirs = [[-1,-1],[-1,0],[-1,1],[0,-1],[0,1],[1,-1],[1,0],[1,1]];
     for (var i = 0; i < muskDirs.length; i++) {
-        for (var step = 1; step <= 2; step++) {
+        for (var step = 1; step <= 3; step++) {
             var nr = r + muskDirs[i][0]*step, nc = c + muskDirs[i][1]*step;
             if (!inBounds(nr, nc)) break;
             if (board[nr][nc] !== EMPTY) {
