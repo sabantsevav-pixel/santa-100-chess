@@ -10,7 +10,7 @@ A 10×10 chess variant featuring the Musketeer piece — playable online with re
 | Feature | Standard Chess | Grand Musketeer Chess |
 |---|---|---|
 | Board | 8×8 | 10×10 |
-| New Piece | — | Musketeer (moves 2 squares any direction) |
+| New Piece | — | Musketeer (moves 3 squares any direction) |
 | Knights | L-shape (2+1) | Standard + Extended (3+1) |
 | Pawns | Move 1-2 squares first move | Move 1-3 squares first move |
 | Castling | King moves 2 squares | King moves 2, 3, or 4 squares |
@@ -28,7 +28,7 @@ A 10×10 chess variant featuring the Musketeer piece — playable online with re
 3. Play in real-time!
 
 ## 🏰 The Musketeer Piece
-- Moves up to **2 squares** in any direction (horizontal, vertical, diagonal)
+- Moves up to **3 squares** in any direction (horizontal, vertical, diagonal)
 - Cannot jump over other pieces
 - Each side starts with **2 Musketeers**
 - Denoted by **M** in notation
